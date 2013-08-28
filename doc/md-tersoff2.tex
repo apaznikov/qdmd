@@ -1,0 +1,283 @@
+\section{Многочастичный потенциал Терсоффа 2}
+
+\subsection{Вычисление полной энергии (Терсофф 2)}
+
+Согласно \cite{tersoff89} полная энергия $U$ системы (total energy) вычисляется по следующей формуле:
+\begin{equation}\label{eq:tersoff89}
+U = \displaystyle\sum_{i=1}^{n} U_i = \frac{1}{2}\sum_{i = 1}^{n}\sum_{j = 1 \atop j \neq i}^{n} U_{ij} = \sum_{i = 1}^{n - 1}\sum_{j = i + 1}^{n} U_{ij},
+\end{equation}
+где $U_{ij}$ -- это энергия связи между атомами $i$ и $j$ (bond energy).
+\begin{equation}\label{eq:tersoff89_bondenergy}
+U_{ij} = f_C(r_{ij})(f_R(r_{ij}) + b_{ij}f_A(r_{ij})),
+\end{equation}
+где $r_{ij}$ -- это расстояние между атомами $i$ и $j$, функция $f_R(r_{ij})$ -- это парный потенциал <<отталкивания>> (repulsive pair potential), функция $f_A(r_{ij})$ -- это парный потенциал <<притяжения>> (attractive pair potential), функция $f_C(r_{ij})$ -- это гладкая функция <<отсечки>> (cutoff function).
+
+Зная координаты атомов $\vec{r}_i = (x_i, y_i, z_i)$ и $\vec{r}_j = (x_j, y_j, z_j)$ нетрудно вычислить расстояние между ними
+\begin{equation}\label{eq:tersoff89_rij}
+r_{ij} = \sqrt{(x_i - x_j)^2 + (y_i - y_j)^2 + (z_i - z_j)^2}.
+\end{equation}
+\[
+f_C(r) =
+\begin{cases}
+	1, &\text{$r_{ij} < R_{ij}$,}\\
+	\frac{1}{2} - \frac{1}{2}\cos(\pi (r_{ij} - R_{ij}) / (S_{ij} - R_{ij})), &\text{$R_{ij}< r_{ij} < S_{ij}$,}\\
+	0, &\text{$r_{ij} > S_{ij}$.}
+\end{cases}
+\]
+\begin{equation}
+f_R(r_{ij}) = A_{ij} \exp (- \lambda_{ij} r_{ij}), 
+\end{equation}
+\begin{equation}
+f_A(r_{ij}) = -B_{ij} \exp (- \lambda_{ij} r_{ij}),
+\end{equation}
+
+\begin{equation}
+b_{ij} = \chi_{ij} 	(1 + \beta_{i}^{m_i} \zeta_{ij}^{m_i}) ^ {-\frac{1}{2m_i}}, 
+\end{equation}
+\begin{equation}
+\zeta_{ij} = \displaystyle\sum_{k=1 \atop k \neq i, j}^{n}f_C(r_{ik})\omega_{ik}g(\Theta_{ijk}), 
+\end{equation}
+\begin{equation}
+g(\Theta_{ijk}) = 1 + \frac{c_i^2}{d_i^2} - \frac{c_i^2}{d_i^2 + (h_i - \cos\Theta_{ijk}) ^ 2}
+\end{equation}
+\begin{equation}
+\lambda_{ij} = (\lambda_i + \lambda_j) / 2
+\end{equation}
+\begin{equation}
+\mu_{ij} = (\mu_i + \mu_j) / 2
+\end{equation}
+\begin{equation}
+A_{ij} = \sqrt{A_i A_j}
+\end{equation}
+\begin{equation}
+B_{ij} = \sqrt{B_i B_j}
+\end{equation}
+\begin{equation}
+R_{ij} = \sqrt{R_i R_j}
+\end{equation}
+\begin{equation}
+S_{ij} = \sqrt{S_i S_j}
+\end{equation}
+
+Параметр $\Theta_{ijk}$ -- это угол между связями (векторами) $\vec{r}_{ij}$ и $\vec{r}_{ik}$ (bond angle). Косинус угла $\Theta$ можно найти зная координаты 
+векторов $\vec{r}_{ij}$ и  $\vec{r}_{ik}$
+
+\begin{equation}
+\vec{r}_{ij} = (x_j - x_i, y_j - y_i, z_j - z_i), 
+\end{equation}
+\begin{equation}
+\vec{r}_{ik} = (x_k - x_i, y_k - y_i, z_k - z_i), 
+\end{equation}
+\begin{equation}
+|\vec{r}_{ij}| = \sqrt{(x_j - x_i)^2 + (y_j - y_i)^2 + (z_j - z_i)^2}, 
+\end{equation}
+\begin{equation}
+|\vec{r}_{ik}| = \sqrt{(x_k - x_i)^2 + (y_k - y_i)^2 + (z_k - z_i)^2}, 
+\end{equation}
+\begin{equation}
+\vec{r}_{ij} \cdot \vec{r}_{ik} = |\vec{r}_{ij}| |\vec{r}_{ik}| \cos\Theta , 
+\end{equation}
+\begin{equation}
+\vec{r}_{ij} \cdot \vec{r}_{ik} = (x_j - x_i)(x_k - x_i) + (y_j - y_i)(y_k - y_i) + (z_j - z_i)(z_k - z_i),
+\end{equation}
+\begin{equation}
+\cos\Theta = \frac{\vec{r}_{ij} \cdot \vec{r}_{ik}} {|\vec{r}_{ij}| |\vec{r}_{ik}|}.
+\end{equation}
+
+Параметры $A_{ij}$, $B_{ij}$, $R_{ij}$, $S_{ij}$, $\lambda_{ij}$, $\mu_{ij}$, $c_i$, $d_i$, $h_i$, $m_i$ -- это константы.
+
+\subsection{Вычисление сил (Терсофф 2)}
+
+Обозначим через $\vec{F}_z = (F_{z}^{x}, F_{z}^{y}, F_{z}^{z})$ вектор силы, действующей на атом $z$, а через $\vec{a}_z = (a_{z}^{x}, a_{z}^{y}, a_{z}^{z})$ вектор ускорения атома. 
+
+Тогда уравнение движения (\ref{eq:newtoneq}) атома $z$ можно записать в координатной форме
+\begin{equation}
+(a_{z}^{x}, a_{z}^{y}, a_{z}^{z}) m_z = (F_{z}^{x}, F_{z}^{y}, F_{z}^{z}).
+\end{equation}
+
+Взаимодействие между атомами является потенциальным, по этой причине сила действующая на атом $z$ -- это отрицательный градиент потенциальной энергии системы.
+\begin{equation}
+\vec{F}_z(\vec{r}_1, \vec{r}_2, \ldots, \vec{r}_n) = - \nabla_z U(\vec{r}_1, \vec{r}_2, \ldots, \vec{r}_n),
+\end{equation}
+где $\nabla_z$ -- это векторный дифференциальный оператор набла
+
+\begin{equation}
+\nabla_z = (\frac{\partial}{\partial x_z}, \frac{\partial}{\partial y_z}, \frac{\partial}{\partial z_z}),
+\end{equation}
+\begin{equation}
+\nabla_z U(\vec{r}_1, \vec{r}_2, \ldots, \vec{r}_n) = (\frac{\partial U}{\partial x_z}, \frac{\partial U}{\partial y_z}, \frac{\partial U}{\partial z_z}).
+\end{equation}
+
+Тогда в координатной форме
+\begin{equation}
+(F_{z}^{x}, F_{z}^{y}, F_{z}^{z}) = - (\frac{\partial U}{\partial x_z}, \frac{\partial U}{\partial y_z}, \frac{\partial U}{\partial z_z}).
+\end{equation}
+\begin{equation}\label{eq:tersoff2_fx}
+F_{z}^{x} = - \frac{\partial U}{\partial x_z} = - \frac{1}{2}\sum_{i = 1}^{n}\sum_{j = 1 \atop j \neq i}^{n} \frac{\partial U_{ij}}{\partial x_z} .
+\end{equation}
+\begin{equation}\label{eq:tersoff2_fy}
+F_{z}^{y} = - \frac{\partial U}{\partial y_z} = - \frac{1}{2}\sum_{i = 1}^{n}\sum_{j = 1 \atop j \neq i}^{n} \frac{\partial U_{ij}}{\partial y_z} .
+\end{equation}
+\begin{equation}\label{eq:tersoff2_fz}
+F_{z}^{z} = - \frac{\partial U}{\partial z_z} = - \frac{1}{2}\sum_{i = 1}^{n}\sum_{j = 1 \atop j \neq i}^{n} \frac{\partial U_{ij}}{\partial z_z} .
+\end{equation}
+
+Три выражения (\ref{eq:tersoff2_fx}) -- (\ref{eq:tersoff2_fz}) можно записать в виде одного заменив дифференцирование по координатам $(x_z, y_z, z_z)$ дифференцированием по вектору $\vec{r}_z = (x_z, y_z, z_z)$
+\begin{equation}
+\vec{F}_z(\vec{r}_1, \vec{r}_2, \ldots, \vec{r}_n)  = - \frac{1}{2}\sum_{i = 1}^{n}\sum_{j = 1 \atop j \neq i}^{n} \frac{\partial U_{ij}}{\partial \vec{r}_z} .
+\end{equation}
+
+Найдем градиент функции $U_{ij}$. Для этого необходимо найти производные функции $U_{ij}$ по переменным $x_z$,  $y_z$,  $z_z$.
+
+\begin{align*}
+ \frac{\partial U_{ij}}{\partial x_z} = & \frac{\partial f_C(r_{ij})}{\partial x_z}\left( f_R(r_{ij}) + b_{ij}f_A(r_{ij})\right) + \\
+	& f_C(r_{ij}) \left( \frac{\partial f_R(r_{ij})}{\partial x_z} + 
+	\frac{\partial b_{ij}}{\partial x_z}f_A(r_{ij}) +
+	b_{ij} \frac{\partial f_A(r_{ij})}{\partial x_z} \right),
+\end{align*}
+
+\begin{align*}
+ \frac{\partial U_{ij}}{\partial y_z} = & \frac{\partial f_C(r_{ij})}{\partial y_z}\left( f_R(r_{ij}) + b_{ij}f_A(r_{ij})\right) + \\
+	& f_C(r_{ij}) \left( \frac{\partial f_R(r_{ij})}{\partial y_z} + 
+	\frac{\partial b_{ij}}{\partial y_z}f_A(r_{ij}) +
+	b_{ij} \frac{\partial f_A(r_{ij})}{\partial y_z} \right),
+\end{align*}
+
+\begin{align*}
+ \frac{\partial U_{ij}}{\partial z_z} = & \frac{\partial f_C(r_{ij})}{\partial z_z}\left( f_R(r_{ij}) + b_{ij}f_A(r_{ij})\right) + \\
+	& f_C(r_{ij}) \left( \frac{\partial f_R(r_{ij})}{\partial z_z} + 
+	\frac{\partial b_{ij}}{\partial z_z}f_A(r_{ij}) +
+	b_{ij} \frac{\partial f_A(r_{ij})}{\partial z_z} \right),
+\end{align*}
+
+Последние три равенства можно записать в компактном виде через производную по вектору $\vec{r}_z$:
+\begin{align*}
+ \frac{\partial U_{ij}}{\partial \vec{r}_z} = & \frac{\partial f_C(r_{ij})}{\partial \vec{r}_z}\left( f_R(r_{ij}) + b_{ij}f_A(r_{ij})\right) + \\
+	& f_C(r_{ij}) \left( \frac{\partial f_R(r_{ij})}																									{\partial \vec{r}_z} + 
+	\frac{\partial b_{ij}}{\partial \vec{r}_z}f_A(r_{ij}) +
+	b_{ij} \frac{\partial f_A(r_{ij})}{\partial \vec{r}_z} \right),
+\end{align*}
+
+Для нахождения производных функции $f_C(r_{ij})$ воспользуемся правилом дифференцирования сложной функции:
+\begin{equation}
+\frac{\partial f_C(r_{ij})}{\partial x_z} =  \frac{\partial f_C(r_{ij})}{\partial r_{ij}}\frac{\partial r_{ij}}{\partial x_z},
+\end{equation}
+\begin{equation}
+\frac{\partial f_C(r_{ij})}{\partial y_z} =  \frac{\partial f_C(r_{ij})}{\partial r_{ij}}\frac{\partial r_{ij}}{\partial y_z},
+\end{equation}
+\begin{equation}
+\frac{\partial f_C(r_{ij})}{\partial z_z} =  \frac{\partial f_C(r_{ij})}{\partial r_{ij}}\frac{\partial r_{ij}}{\partial z_z},
+\end{equation}
+
+\[
+\frac{\partial f_C(r_{ij})}{\partial r_{ij}} =
+\begin{cases}
+0, &\text{$r_{ij} < R_{ij}$,}\\
+- \frac{\pi}{2(S_{ij} - R_{ij})}\cos \left(\pi (r_{ij} - R_{ij}) / (S_{ij} - R_{ij})\right), &\text{$R_{ij}< r_{ij} < S_{ij}$,}\\
+0, &\text{$r_{ij} > S_{ij}$,}
+\end{cases}
+\]
+\begin{equation}
+r_{ij} = \sqrt{(x_i - x_j)^2 + (y_i - y_j)^2 + (z_i - z_j)^2},
+\end{equation}
+\[
+\frac{\partial r_{ij}}{\partial x_z} =-\frac{1}{2 r_{ij}}\frac{\partial}{\partial x_z}\left(x^2_i - 2 x_i x_j + x^2_j\right) = 
+\begin{cases}
+\frac{x_i - x_j}{r_{ij}}, &\text{$z = i$,}\\
+\frac{x_j - x_i}{r_{ij}}, &\text{$z = j$,}\\
+0, &\text{$z \neq i, z \neq j$.}
+\end{cases}
+\]
+\[
+\frac{\partial r_{ij}}{\partial y_z} =-\frac{1}{2 r_{ij}}\frac{\partial}{\partial y_z}\left(y^2_i - 2 y_i y_j + y^2_j\right) = 
+\begin{cases}
+\frac{y_i - y_j}{r_{ij}}, &\text{$z = i$,}\\
+\frac{y_j - y_i}{r_{ij}}, &\text{$z = j$,}\\
+0, &\text{$z \neq i, z \neq j$.}
+\end{cases}
+\]
+\[
+\frac{\partial r_{ij}}{\partial z_z} =-\frac{1}{2 r_{ij}}\frac{\partial}{\partial z_z}\left(z^2_i - 2 z_i z_j + z^2_j\right) = 
+\begin{cases}
+\frac{z_i - z_j}{r_{ij}}, &\text{$z = i$,}\\
+\frac{z_j - z_i}{r_{ij}}, &\text{$z = j$,}\\
+0, &\text{$z \neq i, z \neq j$.}
+\end{cases}
+\]
+
+В компактной форме:
+\[
+\frac{\partial r_{ij}}{\partial \vec{r}_z} = \frac{\vec {r}_{ij}}{r_{ij}}\left(\delta_{zj} - \delta_{zi}\right) = 
+\begin{cases}
+-\frac{\vec {r}_{ij}}{r_{ij}}, &\text{$z = i$,}\\
+\frac{\vec {r}_{ij}}{r_{ij}}, &\text{$z = j$,}\\
+0, &\text{$z \neq i, z \neq j$,}
+\end{cases}
+\]
+где $\delta_{ij}$ -- символ Кронекера
+\begin{equation}
+\delta_{ij} = \left\{\begin{matrix} 
+1, &  i=j,  \\ 
+0, &  i \ne j. \end{matrix}\right.
+\end{equation}
+
+Окончательно имеем 
+\begin{equation}
+\frac{\partial f_C(r_{ij})}{\partial \vec{r}_z} =  \frac{\partial f_C(r_{ij})}{\partial r_{ij}} \left[ \frac{\vec {r}_{ij}}{r_{ij}}\left(\delta_{zj} - \delta_{zi}\right)\right].
+\end{equation}
+
+Найдем  градиент функции $f_R(r_{ij})$
+\begin{equation}
+\frac{\partial f_R(r_{ij})}{\partial \vec{r}_z} = \frac{\partial f_R(r_{ij})}{\partial r_{ij}} \frac{\partial r_{ij}}{\partial \vec{r}_z} =  -\lambda_{ij} A_{ij} \exp(-\lambda_{ij}  r_{ij}) \left[ \frac{\vec {r}_{ij}}{r_{ij}}\left(\delta_{zj} - \delta_{zi}\right)\right],
+\end{equation}
+
+Найдем  градиент функции $f_A(r_{ij})$
+\begin{equation}
+\frac{\partial f_A(r_{ij})}{\partial \vec{r}_z} = \frac{\partial f_A(r_{ij})}{\partial r_{ij}} \frac{\partial r_{ij}}{\partial \vec{r}_z} =  -\lambda_{ij} (-B_{ij} \exp(-\lambda_{ij} r_{ij})) \left[ \frac{\vec {r}_{ij}}{r_{ij}}\left(\delta_{zj} - \delta_{zi}\right)\right],
+\end{equation}
+
+Найдем градиент функции $b_{ij}$
+\begin{equation}
+\frac{\partial b_{ij}}{\partial \vec{r}_z} = \chi_{ij} \frac{- \beta_i^{m_i} \zeta^{{m_i}-1}_{ij}}{2(1 + \beta_i^{m_i} \zeta^{m_i}_{ij})^{\frac{1}{2m_i} + 1}} \frac{\partial \zeta_{ij}}{\partial \vec{r}_z},
+\end{equation}
+
+\begin{align*}
+\frac{\partial \zeta_{ij}}{\partial \vec{r}_z} = \displaystyle\sum_{k=1 \atop k \neq i, j}^{n} & \Big( \frac{\partial f_C(r_{ik})}{\partial \vec{r}_z} \omega_{ik} g(\Theta_{ijk}) + 
+f_C(r_{ik}) \omega_{ik} \frac{\partial g(\Theta_{ijk})}{\partial \vec{r}_z} \Big),
+\end{align*}
+
+\begin{equation}
+\frac{\partial f_C(r_{ik})}{\partial \vec{r}_z} =  \frac{\partial f_C(r_{ik})}{\partial r_{ik}} \left[ \frac{\vec {r}_{ik}}{r_{ik}}\left(\delta_{zk} - \delta_{zi}\right)\right],
+\end{equation}
+
+Найдем градиент функции $g(\Theta_{ijk})$
+
+\begin{equation}
+\frac{\partial g(\Theta_{ijk})}{\partial \vec{r}_z} = 
+	-\frac{2c_i^2 (h_i - \cos\Theta_{ijk})}{(d_i^2 + (h_i - \cos\Theta_{ijk})^2)^2} \cdot
+	\frac{\partial \cos\Theta_{ijk}}{\partial \vec{r}_z}
+\end{equation}
+
+\begin{align*}
+\frac{\partial \cos\Theta_{ijk}}{\partial \vec{r}_z} & =  \frac{\partial}{\partial \vec{r}_z}\left( \vec{r}_{ij}\cdot\vec{r}_{ik}\right) \frac{r_{ij} r_{ik}}{r^2_{ij} r^2_{ik}} -  \frac{(\vec{r}_{ij}\cdot\vec{r}_{ik}) }{r^2_{ij} r^2_{ik}}\frac{\partial}{\partial \vec{r}_z} (r_{ij} r_{ik}) = \\
+  & = \frac{\partial}{\partial \vec{r}_z}\left( \vec{r}_{ij}\cdot\vec{r}_{ik}\right) \frac{1}{r_{ij} r_{ik}} -  \cos\Theta_{ijk} \frac{1}{r_{ij} r_{ik}}  \frac{\partial}{\partial \vec{r}_z} (r_{ij} r_{ik}), 
+\end{align*}
+\[
+\frac{\partial}{\partial \vec{r}_z}(\vec{r}_{ij}\cdot\vec{r}_{ik}) = \vec{r}_{ij}(\delta_{zk} - \delta_{zi}) + \vec{r}_{ik}(\delta_{zj} - \delta_{zi}) = 
+\begin{cases}
+-\vec{r}_{ij} -  \vec{r}_{ik}, &\text{$z = i$,}\\
+\vec{r}_{ik}, &\text{$z = j$,}\\
+\vec{r}_{ij}, &\text{$z = k$,}\\
+0, &\text{$z \neq i, j, k$,}
+\end{cases}
+\]
+\begin{align*}
+\frac{\partial}{\partial \vec{r}_z}(r_{ij}r_{ik})  & = \frac{\partial r_{ij}}{\partial \vec{r}_z}r_{ik} +  r_{ij} \frac{\partial r_{ik}}{\partial \vec{r}_z} = \\
+& = \frac{\vec {r}_{ij}}{r_{ij}}(\delta_{zj} - \delta_{zi})r_{ik} + r_{ij}\frac{\vec {r}_{ik}}{r_{ik}}\left(\delta_{zk} - \delta_{zi}\right)
+\end{align*}
+
+Учитывая последние два равенства получаем
+\begin{align*}
+\frac{\partial \cos\Theta_{ijk}}{\partial \vec{r}_z}  & =  \frac{\vec{r}_{ij}(\delta_{zk} - \delta_{zi}) + \vec{r}_{ik}(\delta_{zj} - \delta_{zi})}{r_{ij}r_{ik}} -
+\cos\Theta_{ijk} \left[ \frac{\vec {r}_{ij}}{r^2_{ij}}(\delta_{zj} - \delta_{zi}) + \frac{\vec {r}_{ik}}{r^2_{ik}}\left(\delta_{zk} - \delta_{zi}\right) \right]. 
+\end{align*}

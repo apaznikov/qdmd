@@ -1,0 +1,242 @@
+\documentclass[a4paper, 12pt]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[russian]{babel}
+\usepackage[]{amsmath}
+\usepackage{graphicx}
+
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+
+% Запрет переноса строк в формулах
+\binoppenalty=10000
+\relpenalty=10000
+
+%opening
+\title{Параллельное моделирование квантовых точек методом молекулярной динамики\\ (DRAFT)}
+\author{Михаил Курносов, Алексей Пазников}
+
+\begin{document}
+\renewcommand{\bibname}{Список литературы}
+
+\maketitle
+
+%\begin{abstract}
+%\end{abstract}
+
+\section{Введение}
+
+Метод молекулярной динамики (МД) — это метод, в котором временная эволюция системы взаимодействующих атомов или частиц отслеживается
+интегрированием их уравнений движения. Для описания движения атомов или частиц применяются законы классической механики.
+
+\section{Уравнения движения атомов}
+Моделируемая система состоит из $n$ атомов. Положение каждого атома в пространстве задается радиус-вектором $\vec{r}_i = (x_i, y_i, z_i)$, $i \in \{1, 2, \ldots, n\}$. 
+В начальный момент времени известны масса $m_i$ каждого атома, его положение в пространстве (радиус-вектор) и скорость $\vec{v}_i = (v^x_i, v^y_i, v^z_i)$.
+
+Необходимо отследить эволюцию взаимодействующих атомов: траектории движения, энергию системы и пр.
+
+Движение атомов (их динамика) описывается уравнением второго закона Ньютона
+\begin{equation}\label{eq:newtoneq}
+m_i \vec{a}_i = \vec{F}_i, \quad i = 1, 2, \ldots, n.
+\end{equation}
+
+\begin{equation}
+m_i \frac{\partial \vec{v}_i}{\partial t} = m_i \frac{\partial^2 \vec{r}_i}{\partial t^2} = \vec{F}_i(\vec{r}_1, \vec{r}_2, \ldots, \vec{r}_n),  \quad i = 1, 2, \ldots, n.
+\end{equation}
+где $\vec{F}_i = (F^x_i, F^y_i, F^z_i)$ -- это сила действующая на атом $i$, а $\vec{a}_i = (a^x_i, a^y_i, a^z_i)$ -- ускорение, с которым атом двигается под действием этой силы.
+
+Таким образом движение атомов описывается $n$ обыкновенными дифференциальными уравнениями:
+
+$$
+\left\{
+   \begin{aligned}
+    m_1 \frac{\partial^2 \vec{r}_1}{\partial t^2} &= \vec{F}_1(\vec{r}_1, \vec{r}_2, \ldots, \vec{r}_n),\\
+    m_2 \frac{\partial^2 \vec{r}_2}{\partial t^2} &= \vec{F}_2(\vec{r}_1, \vec{r}_2, \ldots, \vec{r}_n),\\
+    \ldots \\
+    m_n \frac{\partial^2 \vec{r}_n}{\partial t^2} &= \vec{F}_n(\vec{r}_1, \vec{r}_2, \ldots, \vec{r}_n).\\
+   \end{aligned}
+  \right.
+$$
+               
+Важно отметить, что радиус-вектор атома, его скорость и ускорение -- это функции от времени: $\vec{r}_i(t)$, $\vec{v}_i(t)$, $\vec{a}_i(t)$.
+
+\section{Интегрирование уравнений движения}
+
+Для интегрирования уравнений движения будем использовать алгоритм Velocity Verlet\cite{velverlet82}. 
+
+Как отмечено ранее, в начальный момент времени $t = 0$ известны масса $m_i$ каждого атома, его положение в пространстве $\vec{r}_i(0)$ и скорость $\vec{v}_i(0)$. Для нахождения ускорения $\vec{a}_i(0)$ необходимо вычислить силу, действующую на атом
+
+\begin{equation}
+\vec{a}_i(0) = \frac{1}{m_i} \vec{F}_i(\vec{r}_1(0), \vec{r}_2(0), \ldots, \vec{r}_n(0))
+\end{equation}
+
+В процессе моделирования время $t$ изменяется с шагом $\Delta t$: $t = 0, \Delta t, \ldots, N\Delta t$. 
+Положение, скорость и ускорение атома $i$ в момент времени $t + \Delta t$ вычисляется следующим образом:
+\begin{enumerate}
+\item $\vec{r}_i(t + \Delta t) = \vec{r}_i(t) +  \vec{v}_i(t) \Delta t + \frac{1}{2}  \vec{a}_i(t) \Delta t^2,$
+\item $\vec{a}_i(t + \Delta t) = \frac{1}{m} \vec{F}_i(\vec{r}_1(t + \Delta t), \vec{r}_2(t + \Delta t), \ldots, \vec{r}_n(t + \Delta t)),$
+\item $\vec{v}_i(t + \Delta t) = \vec{v}_i(t) +  \frac{1}{2}\Delta t\vec{a}_i(t) + \frac{1}{2}  \Delta t \vec{a}_i(t + \Delta t).$
+\end{enumerate}
+
+Чтобы не хранить в памяти одновременно $\vec{a}_i(t)$ и $\vec{a}_i(t + \Delta t)$, алгоритм можно записать в другом виде:
+\begin{enumerate}
+\item $\vec{v}_i(t + \frac{1}{2}\Delta t) = \vec{v}_i(t) +  \frac{1}{2}\vec{a}_i(t) \Delta t,$
+\item $\vec{r}_i(t + \Delta t) = \vec{r}_i(t) +  \vec{v}_i(t + \frac{1}{2}\Delta t) \Delta t,$
+\item $\vec{a}_i(t + \Delta t) = \frac{1}{m} \vec{F}_i(\vec{r}_1(t + \Delta t), \vec{r}_2(t + \Delta t), \ldots, \vec{r}_n(t + \Delta t)),$
+\item $\vec{v}_i(t + \Delta t) = \vec{v}_i(t + \frac{1}{2}\Delta t) +  \frac{1}{2}  \vec{a}_i(t + \Delta t) \Delta t.$
+\end{enumerate}
+
+\section{Граничные условия}
+
+\subsection{Периодические граничные условия}
+
+Мы рассматриваем характеристики системы атомов при постоянной плотности. Частицы находятся внутри области моделирования (параллелепипеда, simulation box)
+размера $L_x \times L_y \times L_z$. 
+
+Грани ячейки порождают нежелательные поверхности, от которых атомы отражаются и возвращаются в ячейку.  Таким образом грани вносят значительный вклад в любую характеристику системы.
+
+Для уменьшения влияния граней введем \textit{периодические граничные условия} (periodic boundary conditions -- PBC) -- базовая область повторяется (тиражируется) бесконечное число раз во всех направлениях. Таким образом, любой атом c координатой $\vec{r}_i$ имеет бесконечное количество своих образов (images) с координатами 
+\begin{equation}
+\vec{r}_i + \vec{k},
+\end{equation}
+\begin{equation}
+\vec{k}=(L_x k_x, L_y k_y, L_z k_z), \quad k_x, k_y, k_z \in \{0, 1, 2, \ldots \}.
+\end{equation}
+
+Таким образом, каждый атом с координатами $\vec{r}_i = (x_i, y_i, z_i)$ имеет следующие образы:
+\begin{equation*}
+(x_i, y_i, z_i), (x_i, y_i, z_i + L_z), (x_i, y_i, z_i - L_z),
+\end{equation*}
+\begin{equation*}
+(x_i, y_i + L_y, z_i), (x_i, y_i + L_y, z_i + L_z), (x_i, y_i + L_y, z_i - L_z),
+\end{equation*}
+\begin{equation*}
+(x_i, y_i - L_y, z_i), (x_i, y_i - L_y, z_i + L_z), (x_i, y_i - L_y, z_i - L_z),
+\end{equation*}
+\begin{equation*}
+\cdots
+\end{equation*}
+
+Периодические граничные условия необходимо учитывать при интегрировании уравнений движения. После каждого шага интегрирования проверяется, если атом находится за пределами области моделирования, то его координаты изменяются таким образом, чтобы он оказался внутри области моделирования:
+
+\begin{enumerate}
+\item Атом $i$ расположен по оси $OX$ <<правее>> границы области моделирования $x_i \geq L_x / 2$. Тогда координата изменяется на $x_i - L_x$.
+
+\item Атом $i$ расположен по оси $OX$ <<левее>> границы области моделирования $x_i < -L_x / 2$. Тогда координата изменяется на $x_i + L_x$.
+\end{enumerate}
+
+Введение периодических граничных условий привело к системе с бесконечным числом атомов. Чтобы избежать расчета бесконечного числа взаимодействий введем правило вычисления расстояния между заданными атомами $i$ и $j$.
+
+За расстояние $r_{ij}$ примем минимальное расстояние от атома $i$ до ближайшего образа атома $j$
+\begin{equation}
+r_{ij} = \min_{\forall k_x, k_y, k_z }{| \vec{r}_i + \vec{k} |} =  \min_{\forall k_x, k_y, k_z }{| (x_i, y_i, z_i) + (L_x k_x, L_y k_y, L_z k_z)|}
+\end{equation}
+
+Запишем алгоритм вычисления минимального $r_{ij}$. По определению 
+\begin{equation}
+r_{ij} = |\vec{r}_j - \vec{r}_i| = (x_j - x_i, y_j - y_i, z_j - z_i).
+\end{equation}
+Введем обозначения 
+\begin{equation}
+\Delta x_{ij} = x_j - x_i, \quad \Delta y_{ij} = y_j - y_i, \quad \Delta z_{ij} = z_j - z_i.
+\end{equation}
+ Тогда 
+\begin{equation}
+r_{ij} = \sqrt{\Delta x_{ij}^2 + \Delta y_{ij}^2 + \Delta z_{ij}^2}.
+\end{equation}
+
+Выберем образ атома $j$, находящийся на минимальном расстоянии по оси $OX$ от атома $i$. Имеется три варианта выбора -- сам атом $j$ и два его образа лежащие в соседних областях $(x_j - L_x, y_j, z_j)$ и $(x_j + L_x, y_j, z_j)$.
+\begin{enumerate}
+\item Атом $j$ расположен по оси $OX$ <<правее>> атома $i$ ($x_i > x_j$). \\ Тогда если $\Delta x_{ij} > L_x / 2$, то левый образ атома $j$ ближе по оси 
+$OX$ к атому $i$\\
+\begin{equation*}
+\Delta x_{ij} = \Delta x_{ij} - L_x = x_j - L_x - x_i
+\end{equation*}
+
+\item Атом $j$ расположен по оси $OX$ <<левее>> атома $i$ ($x_j < x_i$). \\ Тогда если $\Delta x_{ij} < -L_x / 2$, то правый образ атома $j$ ближе по оси 
+$OX$ к атому $i$\\
+\begin{equation*}
+\Delta x_{ij} = \Delta x_{ij} + L_x = x_j + L_x - x_i
+\end{equation*}
+\end{enumerate}
+\[
+\Delta x_{ij} =
+\begin{cases}
+x_j - L_x - x_i = \Delta x_{ij} - L_x, &\text{при $\Delta x_{ij} > L_x / 2$,}\\
+x_j + L_x - x_i = \Delta x_{ij} + L_x, &\text{при $\Delta x_{ij} < -L_x / 2$,}\\
+x_j - x_i = \Delta x_{ij}, &\text{иначе.}
+\end{cases}
+\]
+
+Аналогично выбираем минимальные значения для $\Delta y_{ij}$, $\Delta z_{ij}$.
+\[
+\Delta y_{ij} =
+\begin{cases}
+y_j - L_y - y_i = \Delta y_{ij} - L_y, &\text{при $\Delta y_{ij} > L_y / 2$,}\\
+y_j + L_y - y_i = \Delta y_{ij} + L_y, &\text{при $\Delta y_{ij} < -L_y / 2$,}\\
+y_j - y_i = \Delta y_{ij}, &\text{иначе.}
+\end{cases}
+\]
+
+\[
+\Delta z_{ij} =
+\begin{cases}
+z_j - L_z - z_i = \Delta z_{ij} - L_z, &\text{при $\Delta z_{ij} > L_z / 2$,}\\
+z_j + L_z - z_i = \Delta z_{ij} + L_z, &\text{при $\Delta z_{ij} < -L_z / 2$,}\\
+z_j - z_i = \Delta z_{ij}, &\text{иначе.}
+\end{cases}
+\]
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.6\textwidth]{images/pbc.png}
+\caption{Периодические граничные условия (двумерный случай). Фиолетовым цветом показаны образы атома $j$ (образы атома $i$ не приведены)}
+\label{fig:pbc}
+\end{figure}
+
+\input{md-tersoff1}
+
+\input{md-tersoff2}
+
+\section{Оптимизация вычислений взаимодействий между атомами}
+
+\subsection{Метод ячеек}
+
+Разобъем область моделирования (и ее образы) на ячейки (cells) размера 
+
+   
+Мы рассматриваем характеристики системы атомов при постоянной плотности. Частицы находятся внутри ячейки (параллелепипеда) размера $L_x \times L_y \times L_z$. 
+
+Грани ячейки порождают нежелательные поверхности, от которых атомы отражаются и возвращаются в ячейку.  Таким образом грани вносят значительный вклад в любую характеристику системы.
+
+Для уменьшения влияния гранией введем \textit{периодические граничные условия} (periodic boundary conditions -- PBC) -- базовая ячейка повторяется (тиражируется) бесконечное число раз во всех направлениях. Таким образом, любой атом c координатой $\vec{r}_i$ имеет бесконечное количество своих образов (images) с координатами 
+
+
+\section{Структура алгоритма}
+
+\begin{enumerate}
+\item Инициализируем среду моделирования (параметры атомов, simulation box).
+\item Загружаем/генерируем начальные положения атомов $\vec{r}_i(0)$, их скорости $\vec{v}_i(0)$
+\item Формируем локальную окрестность каждого атома (verlet list, linked cell)
+\item Вычисляем силы $\vec{F}_i(0)$ и по ним начальные ускорения атомов $\vec{a}_i(0)$
+\item Выполняем шаги по времени $t = \Delta t, 2\Delta t, \ldots, N\Delta t$
+    \begin{enumerate}
+    \item Первый шаг алгоритма Velocity Verlet\\
+    $\vec{v}_i(t + \frac{1}{2}\Delta t) = \vec{v}_i(t) +  \frac{1}{2}\vec{a}_i(t) \Delta t$\\
+    $\vec{r}_i(t + \Delta t) = \vec{r}_i(t) +  \vec{v}_i(t + \frac{1}{2}\Delta t) \Delta t$ 
+    \item Вычисляем силы и по ним ускорения атомов \\$\vec{a}_i(t + \Delta t) = \frac{1}{m} \vec{F}_i(\vec{r}_1(t + \Delta t), \vec{r}_2(t + \Delta t), \ldots, \vec{r}_n(t + \Delta t))$
+    \item Вычисляем скорость атомов \\$\vec{v}_i(t + \Delta t) = \vec{v}_i(t + \frac{1}{2}\Delta t) +  \frac{1}{2}  \vec{a}_i(t + \Delta t) \Delta t$
+    \end{enumerate}
+ 
+\end{enumerate}
+
+TODO: локальная окрестность каждого атома, PBC
+
+\section{Обзор предшествующих работ}
+
+Основные пакеты: Andersen (Tersoff\_2), LAMMPS (Tersoff\_1, Tersoff\_2), CP2K, MBN Explorer.
+
+
+\bibliographystyle{unsrt}
+\bibliography{md-intro}
+
+\end{document}
