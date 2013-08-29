@@ -21,6 +21,8 @@ extern int *atomspecies;
 extern int natomspecies;
 extern char **atomspecies_names;
 
+extern double Lx, Ly, Lz;
+
 /* Timesteps */
 int ntimesteps;
 int timestep;

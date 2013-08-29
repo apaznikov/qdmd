@@ -7,6 +7,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <math.h>
 
 #include "md.h"
 #include "tersoff1.h"
@@ -14,6 +15,12 @@
 #include "tersoff2_forces.h"
 #include "tersoff2_params.h"
 #include "util.h"
+
+enum {
+    INTPUTFILE_LINESIZE_MAX  = 1024,
+    INTPUTFILE_PARAMSIZE_MAX = 1024
+};
+
 
 /* Atoms positions, velocities and accelerations */
 int natoms;
@@ -25,6 +32,8 @@ int *atomspecies;
 int natomspecies;
 char **atomspecies_names;
 
+double Lx, Ly, Lz;
+
 /* Timesteps */
 int ntimesteps = 500;
 int timestep;
@@ -32,9 +41,12 @@ double timestep_dt = 5E-15;
 
 static void allocate_memory();
 static void free_memory();
+
 static void read_atoms(const char *filename);
 static void read_inputfile(const char *input_file);
-static void read_species(FILE *fin);
+static void read_inputfile_species(FILE *fin, const char *line);
+static void read_inputfile_thermobox(FILE *fin);
+
 static void integrate();
 static void compute_pos();
 static void compute_velocities();
@@ -57,7 +69,7 @@ void md_run()
     
     /* Compute forces for r0, v0, a0 */
 
-    /* TODO: it's for debug! uncomment!
+    /* FIXME: it's for debug! uncomment!
      * tersoff2_energy(); */
     tersoff2_forces();
     
@@ -192,52 +204,69 @@ static void read_atoms(const char *filename)
 static void read_inputfile(const char *input_file)
 {
     FILE *fin;
+    char line[INTPUTFILE_LINESIZE_MAX];
+    char param[INTPUTFILE_PARAMSIZE_MAX];
     
     printf("Read input from file '%s'\n", input_file);
 
     if ( (fin = fopen(input_file, "r")) == NULL)
         exit_error("Can't open file '%s'", input_file);
 
-    read_species(fin);
+    while (fgets(line, INTPUTFILE_LINESIZE_MAX, fin) != NULL) {
+
+        sscanf(line, "%s", param);
+
+        if (!strcmp(param, "SPECIES")) {
+            read_inputfile_species(fin, line);
+        } else if (!strcmp(param, "THERMO")) {
+            sscanf(line + strlen("THERMO"), "%s", param);
+
+            if (!strcmp(param, "BOX")) {
+                read_inputfile_thermobox(fin);
+            }
+        }
+    }
 
     fclose(fin);
 }
 
-/* read_species: Read atom species from input file. */
-static void read_species(FILE *fin)
+/* read_inputfile_species: Read atom species from input file. */
+static void read_inputfile_species(FILE *fin, const char *line)
 {
-    enum {
-        LINESIZE_MAX  = 1024,
-        PARAMSIZE_MAX = 1024
-    };
-    char line[LINESIZE_MAX];
-    char param[PARAMSIZE_MAX];
+    int species;
+    char ch;
 
-    while (fgets(line, LINESIZE_MAX, fin) != NULL) {
+    fseek(fin, -strlen(line) + strlen("SPECIES"), SEEK_CUR);
+    fscanf(fin, "%d", &natomspecies);
+    atomspecies_names = xmalloc(sizeof(char *) * natomspecies);
 
-        sscanf(line, "%s", param);
-        if (!strcmp(param, "SPECIES")) {
-            int species;
-            char ch;
-
-            fseek(fin, -strlen(line) + strlen("SPECIES"), SEEK_CUR);
-            fscanf(fin, "%d", &natomspecies);
-            atomspecies_names = xmalloc(sizeof(char *) * natomspecies);
-
-            for (species = 0; species < natomspecies; species++) {
-                atomspecies_names[species] = xmalloc(sizeof(char) * 
-                                               ATOMTYPE_NAME_SIZE);
-            }
-
-            for (species = 0; species < natomspecies; species++) {
-                fscanf(fin, "%s", atomspecies_names[species]);
-            }
-
-            do {
-                ch = fgetc(fin);
-            } while (ch != '\n');
-        }
+    for (species = 0; species < natomspecies; species++) {
+        atomspecies_names[species] = xmalloc(sizeof(char) * 
+                                     ATOMTYPE_NAME_SIZE);
     }
+
+    for (species = 0; species < natomspecies; species++) {
+        fscanf(fin, "%s", atomspecies_names[species]);
+    }
+
+    do {
+        ch = fgetc(fin);
+    } while (ch != '\n');
+}
+
+/* read_inputfile_thermobox: */
+static void read_inputfile_thermobox(FILE *fin)
+{
+    double x1, y1, z1, x2, y2, z2;
+    char line[INTPUTFILE_LINESIZE_MAX];
+
+    if (fgets(line, INTPUTFILE_LINESIZE_MAX, fin) != NULL) {
+        sscanf(line, "%lf%lf%lf%lf%lf%lf", &x1, &y1, &z1, &x2, &y2, &z2);
+    }
+    
+    Lx = fabs(x1 - x2);
+    Ly = fabs(y1 - y2);
+    Lz = fabs(z1 - z2);
 }
 
 /* 
@@ -272,7 +301,24 @@ static void compute_pos()
         z[i] = z[i] + vz[i] * timestep_dt + 
                0.5 * az[i] * timestep_dt * timestep_dt; 
 
-        /* TODO: periodic boundary conditions. */
+        /* Periodic boundary conditions. */
+        if (x[i] >= Lx / 2) {
+            x[i] = x[i] - Lx;
+        } else if (x[i] < -Lx / 2) {
+            x[i] = x[i] + Lx;
+        }
+
+        if (y[i] >= Ly / 2) {
+            y[i] = y[i] - Ly;
+        } else if (y[i] < -Ly / 2) {
+            y[i] = y[i] + Ly;
+        }
+
+        if (z[i] >= Lz / 2) {
+            z[i] = z[i] - Lz;
+        } else if (z[i] < -Lz / 2) {
+            z[i] = z[i] + Lz;
+        }
 
         /* Update velocities based on a(t - dt) */
         vx[i] = vx[i] + 0.5 * ax[i] * timestep_dt;

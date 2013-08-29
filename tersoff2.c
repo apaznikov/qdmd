@@ -129,13 +129,35 @@ inline double t2_cos_theta(int i, int j, int k)
          sqrt(pow(x[k] - x[i], 2) + pow(y[k] - y[i], 2) + pow(z[k] - z[i], 2)));
 }
 
-/* t2_distance: Compute distance between atom i and atom j. */
+/* 
+ * t2_distance: Compute distance between atom i and atom j. 
+ *              Implements periodic boundary conditions.
+ */
 inline double t2_distance(int i, int j)
 {
-    /* TODO: periodic boundary condition */
-    return sqrt(pow(x[i] - x[j], 2) + 
-                pow(y[i] - y[j], 2) + 
-                pow(z[i] - z[j], 2));
+    double dx = x[j] - x[i];
+    double dy = y[j] - y[i];
+    double dz = z[j] - z[i];
+
+    if (dx > Lx / 2) {
+        dx = dx - Lx;
+    } else if (dx < -Lx / 2) {
+        dx = dx + Lx;
+    }
+
+    if (dy > Ly / 2) {
+        dy = dy - Ly;
+    } else if (dy < -Ly / 2) {
+        dy = dy + Ly;
+    }
+
+    if (dz > Lz / 2) {
+        dz = dz - Lz;
+    } else if (dz < -Lz / 2) {
+        dz = dz + Lz;
+    }
+
+    return sqrt(pow(dx, 2) + pow(dy, 2) + pow(dz, 2));
 }
 
 /* iszero: Test floating point x is not a zero. */
