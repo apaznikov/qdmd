@@ -60,7 +60,7 @@ void md_run()
 
     printf("Run modelling\n");
 
-    tersoff2_init_param();
+    tersoff2_param_init();
     
     /* Initialize simulation parameters */
     /* cutoff ... */
@@ -78,6 +78,8 @@ void md_run()
         printf("step %6d timestep: %E sec.\n", timestep, t);
         integrate();
     }
+
+    tersoff2_param_finalize();
 }
 
 /* 
@@ -254,7 +256,7 @@ static void read_inputfile_species(FILE *fin, const char *line)
     } while (ch != '\n');
 }
 
-/* read_inputfile_thermobox: */
+/* read_inputfile_thermobox: Read sizes of experimental box. */
 static void read_inputfile_thermobox(FILE *fin)
 {
     double x1, y1, z1, x2, y2, z2;

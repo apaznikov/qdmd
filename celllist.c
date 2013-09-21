@@ -23,7 +23,8 @@ void linked_cell_init()
 {
     /* TODO: how to choose cutoff? */
     /* Larger than this disance interactions can be neglected. */
-    double r_cutoff;        
+    /* r_cutoff = 2.5: [Rapaport, 48], [Allen, Tildesley, 148]  */
+    double r_cutoff = 2.5;        
 
     /* Number of cells by each coordinate. */
     double cell_Lx = floor(Lx / r_cutoff);

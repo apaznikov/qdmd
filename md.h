@@ -21,6 +21,7 @@ extern int *atomspecies;
 extern int natomspecies;
 extern char **atomspecies_names;
 
+/* Experimental box size. */
 extern double Lx, Ly, Lz;
 
 /* Timesteps */

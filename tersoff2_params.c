@@ -6,6 +6,7 @@
  */
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <math.h>
 #include <string.h>
 
@@ -71,6 +72,7 @@ param_3bound_t param_all_3bound[NSPECIES];
 
 static void init_single_param();
 static void init_pair_precomp_param();
+static void free_pair_precomp();
 
 static double lambda_ij_precomp(int spec_i, int spec_j);
 static double lambda_precomp(int spec_i);
@@ -86,11 +88,18 @@ static double Sij_precomp(int spec_i, int spec_j);
 static double S_precomp(int spec_i);
 static double chi_ij_precomp(int spec_i, int spec_j);
 
-/* tersoff2_init_param: Init parameters for atoms. */
-void tersoff2_init_param()
+/* tersoff2_param_init: Init parameters for atoms. */
+void tersoff2_param_init()
 {
     init_single_param();
     init_pair_precomp_param();
+}
+
+/* tersoff2_param_finalize: Free memory parameters. */
+/* TODO: */
+void tersoff2_param_finalize()
+{
+    free_pair_precomp();
 }
 
 /* init_single_param: Init single-element parameters. */
@@ -232,6 +241,16 @@ static void init_pair_precomp_param()
                 chi_ij_precomp(spec_i, spec_j);
         }
     }
+}
+
+/* free_pair_precomp: */
+static void free_pair_precomp()
+{
+    int spec_i;
+    for (spec_i = 0; spec_i < natomspecies; spec_i++) {
+        free(param_pair_precomp[spec_i]);
+    }
+    free(param_pair_precomp);
 }
 
 /*

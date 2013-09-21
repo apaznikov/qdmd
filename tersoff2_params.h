@@ -7,7 +7,8 @@
 #ifndef TERSOFF2_PARAMETERS_H
 #define TERSOFF2_PARAMETERS_H
 
-void tersoff2_init_param();
+void tersoff2_param_init();
+void tersoff2_param_finalize();
 
 inline double lambda_ij(int i, int j);
 inline double mu_ij(int i, int j);
