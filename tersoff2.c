@@ -14,6 +14,7 @@
 #include "tersoff2.h"
 #include "tersoff1.h"
 #include "tersoff2_params.h"
+#include "celllist.h"
 
 #define DOUBLE_CMP_EPS DBL_EPSILON      /* Value from float.h. */
 
@@ -29,6 +30,14 @@ void tersoff2_energy()
     double Uij;           /* Bond energy between atom i and atom j */
     double U = 0;         /* Total energy. */
     double f_cutoff_val;
+
+    cell_t cell, neigh_cell;
+
+    while (scan_cells(&cell)) {
+        while (scan_neigh_cells(cell, &neigh_cell)) {
+            /* TODO: all */
+        }
+    }
 
     for (i = 0; i < natoms - 1; i++) {
         for (j = i + 1; j < natoms; j++) {

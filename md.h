@@ -29,6 +29,14 @@ int ntimesteps;
 int timestep;
 double timestep_dt;
 
+#ifndef _STDBOOL_H
+typedef enum 
+{
+    true  = 1,
+    false = 0
+} bool;
+#endif /* _STDBOOL_H */
+
 void md_initialize(const char *cls_file, const char *input_file);
 void md_finalize();
 void md_run();

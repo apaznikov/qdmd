@@ -14,6 +14,7 @@
 #include "tersoff2.h"
 #include "tersoff2_forces.h"
 #include "tersoff2_params.h"
+#include "celllist.h"
 #include "util.h"
 
 enum {
@@ -61,6 +62,9 @@ void md_run()
     printf("Run modelling\n");
 
     tersoff2_param_init();
+
+    linked_cell_init();
+    linked_cell_update();
     
     /* Initialize simulation parameters */
     /* cutoff ... */
@@ -75,11 +79,17 @@ void md_run()
     
     for (timestep = 1; timestep <= ntimesteps; timestep++) {
         t = timestep * timestep_dt;
+
         printf("step %6d timestep: %E sec.\n", timestep, t);
         integrate();
+
+        if (cell_update_test()) {
+            linked_cell_update();
+        }
     }
 
     tersoff2_param_finalize();
+    linked_cell_finalize();
 }
 
 /* 
@@ -292,51 +302,51 @@ static void integrate()
  */
 static void compute_pos()
 {
-    int i;
+    int atom;
 
-    for (i = 0; i < natoms; i++) {
+    for (atom = 0; atom < natoms; atom++) {
         /* Compute position. */
-        x[i] = x[i] + vx[i] * timestep_dt + 
-               0.5 * ax[i] * timestep_dt * timestep_dt; 
-        y[i] = y[i] + vy[i] * timestep_dt + 
-               0.5 * ay[i] * timestep_dt * timestep_dt; 
-        z[i] = z[i] + vz[i] * timestep_dt + 
-               0.5 * az[i] * timestep_dt * timestep_dt; 
+        x[atom] = x[atom] + vx[atom] * timestep_dt + 
+               0.5 * ax[atom] * timestep_dt * timestep_dt; 
+        y[atom] = y[atom] + vy[atom] * timestep_dt + 
+               0.5 * ay[atom] * timestep_dt * timestep_dt; 
+        z[atom] = z[atom] + vz[atom] * timestep_dt + 
+               0.5 * az[atom] * timestep_dt * timestep_dt; 
 
         /* Periodic boundary conditions. */
-        if (x[i] >= Lx / 2) {
-            x[i] = x[i] - Lx;
-        } else if (x[i] < -Lx / 2) {
-            x[i] = x[i] + Lx;
+        if (x[atom] >= Lx / 2) {
+            x[atom] = x[atom] - Lx;
+        } else if (x[atom] < -Lx / 2) {
+            x[atom] = x[atom] + Lx;
         }
 
-        if (y[i] >= Ly / 2) {
-            y[i] = y[i] - Ly;
-        } else if (y[i] < -Ly / 2) {
-            y[i] = y[i] + Ly;
+        if (y[atom] >= Ly / 2) {
+            y[atom] = y[atom] - Ly;
+        } else if (y[atom] < -Ly / 2) {
+            y[atom] = y[atom] + Ly;
         }
 
-        if (z[i] >= Lz / 2) {
-            z[i] = z[i] - Lz;
-        } else if (z[i] < -Lz / 2) {
-            z[i] = z[i] + Lz;
+        if (z[atom] >= Lz / 2) {
+            z[atom] = z[atom] - Lz;
+        } else if (z[atom] < -Lz / 2) {
+            z[atom] = z[atom] + Lz;
         }
 
         /* Update velocities based on a(t - dt) */
-        vx[i] = vx[i] + 0.5 * ax[i] * timestep_dt;
-        vy[i] = vy[i] + 0.5 * ay[i] * timestep_dt;
-        vz[i] = vz[i] + 0.5 * az[i] * timestep_dt;
+        vx[atom] = vx[atom] + 0.5 * ax[atom] * timestep_dt;
+        vy[atom] = vy[atom] + 0.5 * ay[atom] * timestep_dt;
+        vz[atom] = vz[atom] + 0.5 * az[atom] * timestep_dt;
     }
 }
 
 /* compute_velocities: Compute velocities v(t) based on a(t) */
 static void compute_velocities()
 {
-    int i;
+    int atom;
 
-    for (i = 0; i < natoms; i++) {
-        vx[i] = vx[i] + 0.5 * ax[i] * timestep_dt;
-        vy[i] = vy[i] + 0.5 * ay[i] * timestep_dt;
-        vz[i] = vz[i] + 0.5 * az[i] * timestep_dt;
+    for (atom = 0; atom < natoms; atom++) {
+        vx[atom] = vx[atom] + 0.5 * ax[atom] * timestep_dt;
+        vy[atom] = vy[atom] + 0.5 * ay[atom] * timestep_dt;
+        vz[atom] = vz[atom] + 0.5 * az[atom] * timestep_dt;
     }
 }
