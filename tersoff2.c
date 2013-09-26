@@ -25,20 +25,58 @@
 /* tersoff2_energy: Computes energy. */
 void tersoff2_energy()
 {
+    #if 0
     int i, j;
     double rij;           /* Distance between atom i and atom j */
     double Uij;           /* Bond energy between atom i and atom j */
     double U = 0;         /* Total energy. */
     double f_cutoff_val;
+    #endif
+    int atom_i, atom_j;
 
-    cell_t cell, neigh_cell;
+    cell_t cell;
+    cell_t neigh_cell_raw;  /* Raw cell for scan all neighbour cells. */
+    cell_t neigh_cell;      /* Working neighbour cell. */
 
+    init_cell(&cell);
     while (scan_cells(&cell)) {
-        while (scan_neigh_cells(cell, &neigh_cell)) {
-            /* TODO: all */
+        cell_vec_to_scal(&cell);
+
+        init_neigh_cell(cell, &neigh_cell_raw);
+        while (scan_neigh_cells(cell, &neigh_cell_raw)) {
+
+            cell_periodic_bound_cond(neigh_cell_raw, &neigh_cell);
+            cell_vec_to_scal(&neigh_cell);
+
+            /* Now scan over the atoms in cell and atoms in neighbour cell. */
+
+            if (!init_atom_in_cell(cell, &atom_i)) {
+                continue;   /* if no atoms in cell */
+            }
+
+            do {
+                if (!init_atom_in_cell(neigh_cell, &atom_j)) {
+                    continue;   /* if no atoms in cell */
+                }
+
+                do {
+
+                    /* fprintf(stderr, "cell %d neigh %d atom_i %d atom_j %d\n", */
+                    /* cell.scal, neigh_cell.scal, atom_i, atom_j); */
+
+                    /* Avoid double counting of pair (i, j) */
+                    if (atom_i < atom_j) {
+
+                        /* Compute energy */
+                    }
+                } while (scan_atom_in_cell(neigh_cell, &atom_j));
+            } while (scan_atom_in_cell(cell, &atom_i));
         }
     }
 
+    exit(0);
+
+#if 0
     for (i = 0; i < natoms - 1; i++) {
         for (j = i + 1; j < natoms; j++) {
             rij = t2_distance(i, j);
@@ -58,6 +96,7 @@ void tersoff2_energy()
             }
         }
     }
+#endif
 }
 
 /**

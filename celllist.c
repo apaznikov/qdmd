@@ -14,10 +14,18 @@
 #include "celllist.h"
 
 /* End of a list flag. */
-enum { END = -1 }; 
+enum { LIST_END = -1 }; 
 
 /* Addition to r_cutoff, this value from [Rapaport, 55, ch. 3.4] */
 static const double delta_r = 0.35; 
+
+/* 
+ * Cutoff distance: 
+ * Larger than this disance interactions can be neglected.
+ * 
+ * r_cutoff = 2.5: [Rapaport, 48], [Allen, Tildesley, 148] 
+ */
+static const double r_cutoff = 2.5;        
 
 /* Number of cells by each coordinate. */
 /* NOTE: possibly double not int? */
@@ -35,29 +43,19 @@ static double cell_rz;
 /* Linked list: head and list as such. */
 static int *list, *head;
 
-void linked_cell_init();
-void linked_cell_update();
-void linked_cell_finalize();
-
 /* linked_cell_init: Init head and all constants. */
 void linked_cell_init()
 {
-    /* 
-     * Cutoff distance: 
-     * Larger than this disance interactions can be neglected.
-     * 
-     * r_cutoff = 2.5: [Rapaport, 48], [Allen, Tildesley, 148] 
-     */
-    static const double r_cutoff = 2.5;        
     const double cellsize = r_cutoff + delta_r;
 
     int cell;
-    ncells = cell_Lx * cell_Ly * cell_Lz;
 
     /* Number of cells by coordinates */
     cell_Lx = floor(Lx / cellsize);
     cell_Ly = floor(Ly / cellsize);
     cell_Lz = floor(Lz / cellsize);
+
+    ncells = cell_Lx * cell_Ly * cell_Lz;
 
     /* temp */
     cell_LyLz = cell_Ly * cell_Lz;   
@@ -72,11 +70,11 @@ void linked_cell_init()
 
     /* Reset headers to emtpy (end) */
     for (cell = 0; cell < ncells; cell++) {
-        head[cell] = END;
+        head[cell] = LIST_END;
     }
 }
 
-/* linked_cell_update: */
+/* linked_cell_update: Build list of atoms belongs to each cell. */
 void linked_cell_update()
 {
     int atom;
@@ -84,13 +82,13 @@ void linked_cell_update()
 
     /* Construct head and list */
     for (atom = 0; atom < natoms; atom++) {
+
         /* Cell index (vector) to which this atom belongs */
         cell.x = x[atom] / cell_rx;
         cell.y = y[atom] / cell_ry;
         cell.z = z[atom] / cell_rz;
 
-        /* Convert vector cell index to scalar cell index */ 
-        cell.scal = cell.x * cell_LyLz + cell.y * cell_Ly + cell.z;
+        cell_vec_to_scal(&cell);
 
         /* Link to the previous occupant */
         list[atom] = head[cell.scal];
@@ -98,6 +96,12 @@ void linked_cell_update()
         /* The last one goes to the header */
         head[cell.scal] = atom;
     }
+}
+
+/* cell_vec_to_scal: Convert coordinates of cell from vector to scalar. */
+void cell_vec_to_scal(cell_t *cell)
+{
+    cell->scal = cell->x * cell_LyLz + cell->y * cell_Lz + cell->z;
 }
 
 /* linked_cell_finalize(): */
@@ -147,22 +151,17 @@ bool cell_update_test()
     return true;
 }
 
+/* init_cell: Before start scan, initialize cell. */
+void init_cell(cell_t *cell)
+{
+    cell->x = 0;
+    cell->y = 0;
+    cell->z = -1; /* -1 for first increment in scan_cells */
+}
+
 /* scan_cells: Scan over cells. Goes to the next cell. */
 bool scan_cells(cell_t *cell)
 {
-    /* NOTE
-     * possibly not scan not-inner cells?
-     */
-    static bool scan_is_active = false;
-
-    /* First call of scan function. */
-    if (!scan_is_active) {
-        scan_is_active = true;
-        cell->x = 0;
-        cell->y = 0;
-        cell->z = -1; /* -1 for first increment */
-    }
-
     /* Increment the cell coordinates. Check bounds. */
     cell->z++;
     if (cell->z == cell_Lz) {
@@ -175,31 +174,26 @@ bool scan_cells(cell_t *cell)
 
             if (cell->x == cell_Lx) {
                 cell->x = 0;
-                scan_is_active = false;
                 return false;
             }
         }
     }
 
-    cell->scal = cell->x * cell_LyLz + cell->y * cell_Ly + cell->z;
-
     return true;
+}
+
+/* init_neigh_cell: Before start scan, initialize cell. */
+void init_neigh_cell(cell_t cell, cell_t *neigh_cell)
+{
+    neigh_cell->x = cell.x - 1;
+    neigh_cell->y = cell.y - 1;
+    neigh_cell->z = cell.z - 1 - 1; /* -1 for first increment */
 }
 
 /* scan_neigh_cells: */
 bool scan_neigh_cells(cell_t cell, cell_t *neigh_cell)
 {
-    static bool scan_neigh_is_active = false;
-
-    /* First call of scan function. */
-    if (!scan_neigh_is_active) {
-        scan_neigh_is_active = true;
-        neigh_cell->x = cell.x - 1;
-        neigh_cell->y = cell.y - 1;
-        neigh_cell->z = cell.z - 1 - 1; /* -1 for first increment */
-    }
-
-    /* Increment the cell coordinates. Check bounds. */
+    /* Increment cell coordinates. Check bounds. */
     neigh_cell->z++;
     if (neigh_cell->z > cell.z + 1) {
         neigh_cell->z = cell.z - 1;
@@ -211,13 +205,64 @@ bool scan_neigh_cells(cell_t cell, cell_t *neigh_cell)
 
             if (neigh_cell->x > cell.x + 1) {
                 neigh_cell->x = cell.x - 1;
-                scan_neigh_is_active = false;
                 return false;
             }
         }
     }
 
-    /* TODO: periodic boundary condition. */
 
     return true;
+}
+
+/* cell_periodic_bound_cond: Check periodic boundary condition for cell. */
+void cell_periodic_bound_cond(cell_t cell_orig, cell_t *cell_new)
+{
+    if (cell_orig.x < 0) {
+        cell_new->x = cell_orig.x + cell_Lx;
+    } else if (cell_orig.x >= cell_Lx) {
+        cell_new->x = cell_orig.x - cell_Lx;
+    } else {
+        cell_new->x = cell_orig.x;
+    }
+
+    if (cell_orig.y < 0) {
+        cell_new->y = cell_orig.y + cell_Ly;
+    } else if (cell_orig.y >= cell_Ly) {
+        cell_new->y = cell_orig.y - cell_Ly;
+    } else {
+        cell_new->y = cell_orig.y;
+    }
+
+    if (cell_orig.z < 0) {
+        cell_new->z = cell_orig.z + cell_Lz;
+    } else if (cell_orig.z >= cell_Lz) {
+        cell_new->z = cell_orig.z - cell_Lz;
+    } else {
+        cell_new->z = cell_orig.z;
+    }
+}
+
+/* init_atom_in_cell: Init atom before scan in the cell. */
+bool init_atom_in_cell(cell_t cell, int *atom_i)
+{
+    if (head[cell.scal] != LIST_END) {
+        *atom_i = head[cell.scal];
+        return true;
+    }
+    else {
+        *atom_i = -1;
+        return false;
+    }
+}
+
+/* scan_atom_in_cell: Scan in the cell: get list of atoms in the cell. */
+bool scan_atom_in_cell(cell_t cell, int *atom_i)
+{
+    if (list[*atom_i] != LIST_END) {
+        *atom_i = list[*atom_i];
+        return true;
+    } else {
+        *atom_i = -1;
+        return false;
+    }
 }

@@ -73,8 +73,8 @@ void md_run()
     
     /* Compute forces for r0, v0, a0 */
 
-    /* FIXME: it's for debug! uncomment!
-     * tersoff2_energy(); */
+    /* FIXME: it's for debug! uncomment! */
+    tersoff2_energy();
     tersoff2_forces();
     
     for (timestep = 1; timestep <= ntimesteps; timestep++) {
