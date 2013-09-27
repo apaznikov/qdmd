@@ -81,24 +81,24 @@ void linked_cell_init()
 /* linked_cell_update: Build list of atoms belongs to each cell. */
 void linked_cell_update()
 {
-    int atom;
+    int ai;
     cell_t cell;
 
     /* Construct head and list */
-    for (atom = 0; atom < natoms; atom++) {
+    for (ai = 0; ai < natoms; ai++) {
 
         /* Cell index (vector) to which this atom belongs */
-        cell.x = x[atom] / cell_rx;
-        cell.y = y[atom] / cell_ry;
-        cell.z = z[atom] / cell_rz;
+        cell.x = atom[ai].x / cell_rx;
+        cell.y = atom[ai].y / cell_ry;
+        cell.z = atom[ai].z / cell_rz;
 
         cell_vec_to_scal(&cell);
 
         /* Link to the previous occupant */
-        list[atom] = head[cell.scal];
+        list[ai] = head[cell.scal];
 
         /* The last one goes to the header */
-        head[cell.scal] = atom;
+        head[cell.scal] = ai;
     }
 }
 
@@ -121,23 +121,23 @@ void linked_cell_finalize()
  */
 bool cell_update_test()
 {
-    int atom;
-    double max_v = vx[0];
+    int ai;
+    double max_v = atom[0].vx;
     static double sum_max_v = 0;
 
     /* Find maximum of velocities. */
-    for (atom = 0; atom < natoms; atom++) {
+    for (ai = 0; ai < natoms; ai++) {
 
-        if (vx[atom] > max_v) {
-            max_v = vx[atom];
+        if (atom[ai].vx > max_v) {
+            max_v = atom[ai].vx;
         }
 
-        if (vy[atom] > max_v) {
-            max_v = vy[atom];
+        if (atom[ai].vy > max_v) {
+            max_v = atom[ai].vy;
         }
 
-        if (vz[atom] > max_v) {
-            max_v = vz[atom];
+        if (atom[ai].vz > max_v) {
+            max_v = atom[ai].vz;
         }
     }
 

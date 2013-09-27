@@ -11,13 +11,17 @@ enum {
     ATOMTYPE_NAME_SIZE = 2
 };
 
-/* Atoms positions, velocities and accelerations */
-extern int natoms;
-extern double *x, *y, *z;
-extern double *vx, *vy, *vz;
-extern double *ax, *ay, *az;
-extern int *atomspecies;
+typedef struct {
+    /* Atoms positions, velocities and accelerations */
+    double x, y, z;
+    double vx, vy, vz;
+    double ax, ay, az;
+} atom_t;
 
+extern int natoms;
+extern atom_t *atom;
+
+extern int *atomspecies;
 extern int natomspecies;
 extern char **atomspecies_names;
 

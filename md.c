@@ -22,15 +22,11 @@ enum {
     INTPUTFILE_PARAMSIZE_MAX = 1024
 };
 
-
-/* Atoms positions, velocities and accelerations */
 int natoms;
-double *x, *y, *z;
-double *vx, *vy, *vz;
-double *ax, *ay, *az;
-int *atomspecies;
+atom_t *atom;
 
 int natomspecies;
+int *atomspecies;
 char **atomspecies_names;
 
 double Lx, Ly, Lz;
@@ -115,15 +111,7 @@ void md_finalize()
 /* allocate_memory: Allocates memory for global arrays. */
 static void allocate_memory()
 {
-    x = xmalloc(sizeof(*x) * natoms);
-    y = xmalloc(sizeof(*y) * natoms);
-    z = xmalloc(sizeof(*z) * natoms);
-    vx = xmalloc(sizeof(*vx) * natoms);
-    vy = xmalloc(sizeof(*vy) * natoms);
-    vz = xmalloc(sizeof(*vz) * natoms);
-    ax = xmalloc(sizeof(*ax) * natoms);
-    ay = xmalloc(sizeof(*ay) * natoms);
-    az = xmalloc(sizeof(*az) * natoms);
+    atom = xmalloc(sizeof(atom_t) * natoms);
     atomspecies = xmalloc(sizeof(*atomspecies) * natoms);
 }
 
@@ -132,15 +120,7 @@ static void free_memory()
 {
     int species;
 
-    free(x);
-    free(y);
-    free(z);
-    free(vx);
-    free(vy);
-    free(vz);
-    free(ax);
-    free(ay);
-    free(az);
+    free(atom);
     free(atomspecies);
 
     for (species = 0; species < natomspecies; species++) {
@@ -198,8 +178,8 @@ static void read_atoms(const char *filename)
         lineno++;
         /* Read: x  y  z  atom_species  vx  vy  vz */
         if (sscanf(line, "%lf %lf %lf %d %lf %lf %lf", 
-                   &x[i], &y[i], &z[i], &atomspecies[i], 
-                   &vx[i], &vy[i], &vz[i]) < 7)
+                   &atom[i].x, &atom[i].y, &atom[i].z, &atomspecies[i], 
+                   &atom[i].vx, &atom[i].vy, &atom[i].vz) < 7)
         {                                                 
             exit_error("Can't read atom %d info (line %d)", i, lineno);
         }
@@ -302,52 +282,52 @@ static void integrate()
  */
 static void compute_pos()
 {
-    int atom;
+    int ai;
 
-    for (atom = 0; atom < natoms; atom++) {
+    for (ai = 0; ai < natoms; ai++) {
         /* Compute position. */
-        x[atom] = x[atom] + vx[atom] * timestep_dt + 
-               0.5 * ax[atom] * timestep_dt * timestep_dt; 
-        y[atom] = y[atom] + vy[atom] * timestep_dt + 
-               0.5 * ay[atom] * timestep_dt * timestep_dt; 
-        z[atom] = z[atom] + vz[atom] * timestep_dt + 
-               0.5 * az[atom] * timestep_dt * timestep_dt; 
+        atom[ai].x = atom[ai].x + atom[ai].vx * timestep_dt + 
+                     0.5 * atom[ai].ax * timestep_dt * timestep_dt; 
+        atom[ai].y = atom[ai].y + atom[ai].vy * timestep_dt + 
+                     0.5 * atom[ai].ay * timestep_dt * timestep_dt; 
+        atom[ai].z = atom[ai].z + atom[ai].vz * timestep_dt + 
+                     0.5 * atom[ai].az * timestep_dt * timestep_dt; 
 
         /* Periodic boundary conditions. */
         /* TODO: make function for PBC */
-        if (x[atom] >= Lx / 2) {
-            x[atom] = x[atom] - Lx;
-        } else if (x[atom] < -Lx / 2) {
-            x[atom] = x[atom] + Lx;
+        if (atom[ai].x >= Lx / 2) {
+            atom[ai].x = atom[ai].x - Lx;
+        } else if (atom[ai].x < -Lx / 2) {
+            atom[ai].x = atom[ai].x + Lx;
         }
 
-        if (y[atom] >= Ly / 2) {
-            y[atom] = y[atom] - Ly;
-        } else if (y[atom] < -Ly / 2) {
-            y[atom] = y[atom] + Ly;
+        if (atom[ai].y >= Ly / 2) {
+            atom[ai].y = atom[ai].y - Ly;
+        } else if (atom[ai].y < -Ly / 2) {
+            atom[ai].y = atom[ai].y + Ly;
         }
 
-        if (z[atom] >= Lz / 2) {
-            z[atom] = z[atom] - Lz;
-        } else if (z[atom] < -Lz / 2) {
-            z[atom] = z[atom] + Lz;
+        if (atom[ai].z >= Lz / 2) {
+            atom[ai].z = atom[ai].z - Lz;
+        } else if (atom[ai].z < -Lz / 2) {
+            atom[ai].z = atom[ai].z + Lz;
         }
 
         /* Update velocities based on a(t - dt) */
-        vx[atom] = vx[atom] + 0.5 * ax[atom] * timestep_dt;
-        vy[atom] = vy[atom] + 0.5 * ay[atom] * timestep_dt;
-        vz[atom] = vz[atom] + 0.5 * az[atom] * timestep_dt;
+        atom[ai].vx = atom[ai].vx + 0.5 * atom[ai].ax * timestep_dt;
+        atom[ai].vy = atom[ai].vy + 0.5 * atom[ai].ay * timestep_dt;
+        atom[ai].vz = atom[ai].vz + 0.5 * atom[ai].az * timestep_dt;
     }
 }
 
 /* compute_velocities: Compute velocities v(t) based on a(t) */
 static void compute_velocities()
 {
-    int atom;
+    int ai;
 
-    for (atom = 0; atom < natoms; atom++) {
-        vx[atom] = vx[atom] + 0.5 * ax[atom] * timestep_dt;
-        vy[atom] = vy[atom] + 0.5 * ay[atom] * timestep_dt;
-        vz[atom] = vz[atom] + 0.5 * az[atom] * timestep_dt;
+    for (ai = 0; ai < natoms; ai++) {
+        atom[ai].vx = atom[ai].vx + 0.5 * atom[ai].ax * timestep_dt;
+        atom[ai].vy = atom[ai].vy + 0.5 * atom[ai].ay * timestep_dt;
+        atom[ai].vz = atom[ai].vz + 0.5 * atom[ai].az * timestep_dt;
     }
 }

@@ -74,9 +74,9 @@ void tersoff2_forces()
         Fy *= -0.5;
         Fz *= -0.5;
 
-        ax[z] = Fx / mass(z);
-        ay[z] = Fy / mass(z);
-        az[z] = Fz / mass(z);
+        atom[z].ax = Fx / mass(z);
+        atom[z].ay = Fy / mass(z);
+        atom[z].az = Fz / mass(z);
     }
 }
 
@@ -258,13 +258,13 @@ static double getcoord(int i, coord_t coord)
 {
     switch(coord) {
         case COORD_X:
-            return x[i];
+            return atom[i].x;
             break;
         case COORD_Y:
-            return y[i];
+            return atom[i].y;
             break;
         case COORD_Z:
-            return z[i];
+            return atom[i].z;
             break;
     }
     return 0;

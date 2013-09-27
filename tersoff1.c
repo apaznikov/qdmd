@@ -49,27 +49,27 @@ static inline int    t1_iszero(double x);
 /* tersoff1_forces: Computes forces. */
 void tersoff1_forces()
 {
-    int i, j;
+    int ai, aj;
     double rij;           /* Distance between atom i and atom j */
     double Uij;           /* Bond energy between atom i and atom j */
     double U = 0;         /* Total energy. */
     double f_cutoff_val;
     
-    for (i = 0; i < natoms; i++) {
-        ax[i] = 0.0;
-        ay[i] = 0.0;
-        az[i] = 0.0;
+    for (ai = 0; ai < natoms; ai++) {
+        atom[ai].ax = 0.0;
+        atom[ai].ay = 0.0;
+        atom[ai].az = 0.0;
     }
 
-    for (i = 0; i < natoms - 1; i++) {
-        for (j = i + 1; j < natoms; j++) {
-            rij = t1_distance(i, j);
+    for (ai = 0; ai < natoms - 1; ai++) {
+        for (aj = ai + 1; aj < natoms; aj++) {
+            rij = t1_distance(ai, aj);
             f_cutoff_val = t1_f_cutoff(rij);
 
             if (!t1_iszero(f_cutoff_val)) {
                 /* If potential is enough large. */
-                Uij = f_cutoff_val * (t1_a(i, j, rij) * t1_f_repulsive(rij) + 
-                                      t1_b(i, j, rij) * t1_f_attractive(rij));
+                Uij = f_cutoff_val * (t1_a(ai, aj, rij) * t1_f_repulsive(rij) + 
+                                      t1_b(ai, aj, rij) * t1_f_attractive(rij));
                 U += Uij;
             }
         }
@@ -172,22 +172,24 @@ inline double t1_g(int i, int j, int k)
 inline double t1_cos_theta(int i, int j, int k)
 {
     return
-    ((x[j] - x[i]) * (x[k] - x[i]) + 
-     (y[j] - y[i]) * (y[k] - y[i]) +
-     (z[j] - z[i]) * (z[k] - z[i])) / 
-    (sqrt(pow(x[j] - x[i], 2) + pow(y[j] - y[i], 2) + pow(z[j] - z[i], 2)) *
-     sqrt(pow(x[k] - x[i], 2) + pow(y[k] - y[i], 2) + pow(z[k] - z[i], 2)));
+    ((atom[j].x - atom[i].x) * (atom[k].x - atom[i].x) + 
+     (atom[j].y - atom[i].y) * (atom[k].y - atom[i].y) +
+     (atom[j].z - atom[i].z) * (atom[k].z - atom[i].z)) / 
+    (sqrt(pow(atom[j].x - atom[i].x, 2) + pow(atom[j].y - atom[i].y, 2) + 
+          pow(atom[j].z - atom[i].z, 2)) *
+     sqrt(pow(atom[k].x - atom[i].x, 2) + pow(atom[k].y - atom[i].y, 2) + 
+          pow(atom[k].z - atom[i].z, 2)));
 }
 
 /* t1_a: */
-inline double t1_a(int i, int j, double rij)
+double t1_a(int i, int j, double rij)
 {
     return pow(1 + pow(alpha, n) * 
                    pow(t1_eta(i, j, rij), n), -1 / (2 * n));
 }
 
 /* t1_eta: */
-inline double t1_eta(int i, int j, double rij)
+double t1_eta(int i, int j, double rij)
 {
     double rik, f_cutoff_val, sum = 0;
     int k;
@@ -233,9 +235,9 @@ inline double t1_f_attractive(double rij)
 /* t1_distance: Compute distance between atom i and atom j. */
 static inline double t1_distance(int i, int j)
 {
-    return sqrt(pow(x[i] - x[j], 2) + 
-                pow(y[i] - y[j], 2) + 
-                pow(z[i] - z[j], 2));
+    return sqrt(pow(atom[i].x - atom[j].x, 2) + 
+                pow(atom[i].y - atom[j].y, 2) + 
+                pow(atom[i].z - atom[j].z, 2));
 }
 
 /* t1_iszero: Test floating point x is not a zero. */

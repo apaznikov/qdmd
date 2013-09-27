@@ -37,11 +37,9 @@ void tersoff2_energy()
 
     while (scan_cells(&cell)) {
         cell_vec_to_scal(&cell);
-        printf("cell = %d\n", cell.scal);
 
         init_neigh_cell(cell, &neigh_cell_raw);
         while (scan_neigh_cells(cell, &neigh_cell_raw)) {
-
             int atom_cell, atom_neighcell;
             double atom_shift_x, atom_shift_y, atom_shift_z;
 
@@ -49,6 +47,9 @@ void tersoff2_energy()
                                      &atom_shift_x, &atom_shift_y, 
                                      &atom_shift_z);
             cell_vec_to_scal(&neigh_cell);
+
+            fprintf(stderr, "cell = %d neigh = %d\n", 
+                    cell.scal, neigh_cell.scal);
 
             /* Now scan over the atoms in cell and atoms in neighbour cell. */
 
@@ -177,22 +178,26 @@ inline double t2_g(int i, int j, int k)
 inline double t2_cos_theta(int i, int j, int k)
 {
     return
-        ((x[j] - x[i]) * (x[k] - x[i]) + 
-         (y[j] - y[i]) * (y[k] - y[i]) +
-         (z[j] - z[i]) * (z[k] - z[i])) / 
-        (sqrt(pow(x[j] - x[i], 2) + pow(y[j] - y[i], 2) + pow(z[j] - z[i], 2)) *
-         sqrt(pow(x[k] - x[i], 2) + pow(y[k] - y[i], 2) + pow(z[k] - z[i], 2)));
+        ((atom[j].x - atom[i].x) * (atom[k].x - atom[i].x) + 
+         (atom[j].y - atom[i].y) * (atom[k].y - atom[i].y) +
+         (atom[j].z - atom[i].z) * (atom[k].z - atom[i].z)) / 
+        (sqrt(pow(atom[j].x - atom[i].x, 2) + 
+              pow(atom[j].y - atom[i].y, 2) + 
+              pow(atom[j].z - atom[i].z, 2)) *
+         sqrt(pow(atom[k].x - atom[i].x, 2) + 
+              pow(atom[k].y - atom[i].y, 2) + 
+              pow(atom[k].z - atom[i].z, 2)));
 }
 
 /* 
  * t2_distance: Compute distance between atom i and atom j. 
  *              Implements periodic boundary conditions.
  */
-inline double t2_distance(int atom_i, int atom_j)
+inline double t2_distance(int i, int j)
 {
-    double dx = x[atom_j] - x[atom_i];
-    double dy = y[atom_j] - y[atom_i];
-    double dz = z[atom_j] - z[atom_i];
+    double dx = atom[j].x - atom[i].x;
+    double dy = atom[j].y - atom[i].y;
+    double dz = atom[j].z - atom[i].z;
 
     if (dx > Lx / 2) {
         dx = dx - Lx;
@@ -221,9 +226,9 @@ inline double t2_distance(int atom_i, int atom_j)
  */
 inline double t2_distance_noPBC(int atom_i, int atom_j)
 {
-    return sqrt(pow(x[atom_j] - x[atom_i], 2) + 
-                pow(y[atom_j] - y[atom_i], 2) + 
-                pow(z[atom_j] - z[atom_i], 2));
+    return sqrt(pow(atom[atom_j].x - atom[atom_i].x, 2) + 
+                pow(atom[atom_j].y - atom[atom_i].y, 2) + 
+                pow(atom[atom_j].z - atom[atom_i].z, 2));
 }
 
 /* iszero: Test floating point x is not a zero. */
