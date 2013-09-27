@@ -25,78 +25,85 @@
 /* tersoff2_energy: Computes energy. */
 void tersoff2_energy()
 {
-    #if 0
-    int i, j;
     double rij;           /* Distance between atom i and atom j */
-    double Uij;           /* Bond energy between atom i and atom j */
     double U = 0;         /* Total energy. */
     double f_cutoff_val;
-    #endif
-    int atom_i, atom_j;
 
     cell_t cell;
     cell_t neigh_cell_raw;  /* Raw cell for scan all neighbour cells. */
     cell_t neigh_cell;      /* Working neighbour cell. */
 
     init_cell(&cell);
+
     while (scan_cells(&cell)) {
         cell_vec_to_scal(&cell);
+        printf("cell = %d\n", cell.scal);
 
         init_neigh_cell(cell, &neigh_cell_raw);
         while (scan_neigh_cells(cell, &neigh_cell_raw)) {
 
-            cell_periodic_bound_cond(neigh_cell_raw, &neigh_cell);
+            int atom_cell, atom_neighcell;
+            double atom_shift_x, atom_shift_y, atom_shift_z;
+
+            cell_periodic_bound_cond(neigh_cell_raw, &neigh_cell,
+                                     &atom_shift_x, &atom_shift_y, 
+                                     &atom_shift_z);
             cell_vec_to_scal(&neigh_cell);
 
             /* Now scan over the atoms in cell and atoms in neighbour cell. */
 
-            if (!init_atom_in_cell(cell, &atom_i)) {
-                continue;   /* if no atoms in cell */
+            if (!init_atom_in_cell(cell, &atom_cell)) {
+                continue;   /* if no atoms in the cell */
             }
 
             do {
-                if (!init_atom_in_cell(neigh_cell, &atom_j)) {
-                    continue;   /* if no atoms in cell */
+                if (!init_atom_in_cell(neigh_cell, &atom_neighcell)) {
+                    continue;   /* if no atoms in the cell */
                 }
 
                 do {
 
-                    /* fprintf(stderr, "cell %d neigh %d atom_i %d atom_j %d\n", */
+                    /* fprintf(stderr, "cell %d neigh %d a_i %d a_j %d\n", */
                     /* cell.scal, neigh_cell.scal, atom_i, atom_j); */
 
                     /* Avoid double counting of pair (i, j) */
-                    if (atom_i < atom_j) {
+                    if (atom_cell < atom_neighcell) {
+
+                        /* TODO implement PBC via shift vector. */
+                        int atom_i = atom_cell;
+                        int atom_j = atom_neighcell;
 
                         /* Compute energy */
+                        rij = t2_distance_noPBC(atom_i, atom_j);
+                        f_cutoff_val = t2_f_cutoff(atom_i, atom_j, rij);
+
+                        if (!iszero(f_cutoff_val)) {
+                            /* Bond energy between atom i and atom j */
+                            double Uij;           
+                            /* If potential is enough large. */
+                            Uij = f_cutoff_val * 
+                                  (t2_f_repulsive(atom_i, atom_j, rij) + 
+                                   t2_b(atom_i, atom_j) * 
+                                   t2_f_attractive(atom_i, atom_j, rij));
+
+                            /*
+                            In Andersen fortran program:
+                            Uij = f_cutoff_val * 
+                                  (a(atom_i, atom_j, rij) * 
+                                   f_repulsive(atom_i, atom_j, rij) + 
+                                   b(atom_i, atom_j, rij) * 
+                                   f_attractive(atom_i, atom_j, rij));
+                            */
+                            
+                            U += Uij;
+                        }
                     }
-                } while (scan_atom_in_cell(neigh_cell, &atom_j));
-            } while (scan_atom_in_cell(cell, &atom_i));
+                } while (scan_atom_in_cell(neigh_cell, &atom_neighcell));
+            } while (scan_atom_in_cell(cell, &atom_cell));
         }
     }
 
     exit(0);
-
-#if 0
-    for (i = 0; i < natoms - 1; i++) {
-        for (j = i + 1; j < natoms; j++) {
-            rij = t2_distance(i, j);
-            f_cutoff_val = t2_f_cutoff(i, j, rij);
-
-            if (!iszero(f_cutoff_val)) {
-                /* If potential is enough large. */
-                Uij = f_cutoff_val * (t2_f_repulsive(i, j, rij) + 
-                                      t2_b(i, j) * t2_f_attractive(i, j, rij));
-                /*
-                In Andersen fortran program:
-                Uij = f_cutoff_val * (a(i, j, rij) * f_repulsive(i, j, rij) + 
-                                      b(i, j, rij) * f_attractive(i, j, rij));
-                */
-                
-                U += Uij;
-            }
-        }
-    }
-#endif
 }
 
 /**
@@ -181,11 +188,11 @@ inline double t2_cos_theta(int i, int j, int k)
  * t2_distance: Compute distance between atom i and atom j. 
  *              Implements periodic boundary conditions.
  */
-inline double t2_distance(int i, int j)
+inline double t2_distance(int atom_i, int atom_j)
 {
-    double dx = x[j] - x[i];
-    double dy = y[j] - y[i];
-    double dz = z[j] - z[i];
+    double dx = x[atom_j] - x[atom_i];
+    double dy = y[atom_j] - y[atom_i];
+    double dz = z[atom_j] - z[atom_i];
 
     if (dx > Lx / 2) {
         dx = dx - Lx;
@@ -206,6 +213,17 @@ inline double t2_distance(int i, int j)
     }
 
     return sqrt(pow(dx, 2) + pow(dy, 2) + pow(dz, 2));
+}
+
+/* 
+ * t2_distance_noPBC: Compute distance between atom i and atom j. 
+ *                    NOT implements periodic boundary conditions.
+ */
+inline double t2_distance_noPBC(int atom_i, int atom_j)
+{
+    return sqrt(pow(x[atom_j] - x[atom_i], 2) + 
+                pow(y[atom_j] - y[atom_i], 2) + 
+                pow(z[atom_j] - z[atom_i], 2));
 }
 
 /* iszero: Test floating point x is not a zero. */

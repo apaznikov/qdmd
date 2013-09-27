@@ -29,6 +29,8 @@ bool init_atom_in_cell(cell_t cell, int *atom_i);
 bool scan_atom_in_cell(cell_t cell, int *atom_i);
 
 void cell_vec_to_scal(cell_t *cell);
-void cell_periodic_bound_cond(cell_t cell_orig, cell_t *cell_new);
+void cell_periodic_bound_cond(cell_t cell_orig, cell_t *cell_new,
+                              double *atom_shift_x, double *atom_shift_y, 
+                              double *atom_shift_z);
 
 #endif /* end of include guard: CELLLIST_H */

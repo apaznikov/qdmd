@@ -18,7 +18,8 @@ inline double t2_zeta(int i, int j);
 inline double t2_g(int i, int j, int k);
 inline double t2_cos_theta(int i, int j, int k);
 
-inline double t2_distance(int i, int j);
+inline double t2_distance(int atom_i, int atom_j);
+inline double t2_distance_noPBC(int atom_i, int atom_j);
 inline int    iszero(double x);
 
 #endif /* TERSOFF2_H */

@@ -314,6 +314,7 @@ static void compute_pos()
                0.5 * az[atom] * timestep_dt * timestep_dt; 
 
         /* Periodic boundary conditions. */
+        /* TODO: make function for PBC */
         if (x[atom] >= Lx / 2) {
             x[atom] = x[atom] - Lx;
         } else if (x[atom] < -Lx / 2) {

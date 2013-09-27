@@ -46,21 +46,25 @@ static int *list, *head;
 /* linked_cell_init: Init head and all constants. */
 void linked_cell_init()
 {
-    const double cellsize = r_cutoff + delta_r;
+    /* 
+     * r_cutoff_more is more than simply r_cutoff in order to don't 
+     * update cells after each step. 
+     */
+    const double r_cutoff_more = r_cutoff + delta_r;
 
     int cell;
 
-    /* Number of cells by coordinates */
-    cell_Lx = floor(Lx / cellsize);
-    cell_Ly = floor(Ly / cellsize);
-    cell_Lz = floor(Lz / cellsize);
+    /* Size of lattice: number of cells by coordinates */
+    cell_Lx = floor(Lx / r_cutoff_more);
+    cell_Ly = floor(Ly / r_cutoff_more);
+    cell_Lz = floor(Lz / r_cutoff_more);
 
     ncells = cell_Lx * cell_Ly * cell_Lz;
 
     /* temp */
     cell_LyLz = cell_Ly * cell_Lz;   
 
-    /* Size of a one cell. */
+    /* Size of a one cell - more than r_cutoff_more. */
     cell_rx = Lx / cell_Lx;
     cell_ry = Ly / cell_Ly;
     cell_rz = Lz / cell_Lz;
@@ -214,31 +218,55 @@ bool scan_neigh_cells(cell_t cell, cell_t *neigh_cell)
     return true;
 }
 
-/* cell_periodic_bound_cond: Check periodic boundary condition for cell. */
-void cell_periodic_bound_cond(cell_t cell_orig, cell_t *cell_new)
+/* 
+ * cell_periodic_bound_cond: Check periodic boundary condition for cell. 
+ *                           Cell must be inside simulation box, 
+ *                           on the other hand, atom must be treated as it is
+ *                           and must not be pulled back into the central
+ *                           simation box.
+ */
+void cell_periodic_bound_cond(cell_t cell_orig, cell_t *cell_new,
+                              double *atom_shift_x, double *atom_shift_y, 
+                              double *atom_shift_z)
 {
+    /*
+    cell_new->x = (cell_orig.x + cell_Lx) % cell_Lx;
+    cell_new->y = (cell_orig.y + cell_Ly) % cell_Ly;
+    cell_new->z = (cell_orig.z + cell_Lz) % cell_Lz;
+    */
+
+    /* Another way: */
     if (cell_orig.x < 0) {
         cell_new->x = cell_orig.x + cell_Lx;
+        *atom_shift_x = -Lx;
     } else if (cell_orig.x >= cell_Lx) {
         cell_new->x = cell_orig.x - cell_Lx;
+        *atom_shift_x = Lx;
     } else {
         cell_new->x = cell_orig.x;
+        *atom_shift_x = 0;
     }
 
     if (cell_orig.y < 0) {
         cell_new->y = cell_orig.y + cell_Ly;
+        *atom_shift_y = -Ly;
     } else if (cell_orig.y >= cell_Ly) {
         cell_new->y = cell_orig.y - cell_Ly;
+        *atom_shift_y = Ly;
     } else {
         cell_new->y = cell_orig.y;
+        *atom_shift_y = 0;
     }
 
     if (cell_orig.z < 0) {
         cell_new->z = cell_orig.z + cell_Lz;
+        *atom_shift_y = -Lz;
     } else if (cell_orig.z >= cell_Lz) {
         cell_new->z = cell_orig.z - cell_Lz;
+        *atom_shift_y = Lz;
     } else {
         cell_new->z = cell_orig.z;
+        *atom_shift_z = 0;
     }
 }
 
