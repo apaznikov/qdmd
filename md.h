@@ -16,6 +16,7 @@ typedef struct {
     double x, y, z;
     double vx, vy, vz;
     double ax, ay, az;
+    int index;
 } atom_t;
 
 extern int natoms;

@@ -25,9 +25,8 @@
 /* tersoff2_energy: Computes energy. */
 void tersoff2_energy()
 {
-    double rij;           /* Distance between atom i and atom j */
     double U = 0;         /* Total energy. */
-    double f_cutoff_val;
+    int n_int = 0;
 
     cell_t cell;
     cell_t neigh_cell_raw;  /* Raw cell for scan all neighbour cells. */
@@ -48,9 +47,6 @@ void tersoff2_energy()
                                      &atom_shift_z);
             cell_vec_to_scal(&neigh_cell);
 
-            fprintf(stderr, "cell = %d neigh = %d\n", 
-                    cell.scal, neigh_cell.scal);
-
             /* Now scan over the atoms in cell and atoms in neighbour cell. */
 
             if (!init_atom_in_cell(cell, &atom_cell)) {
@@ -64,28 +60,39 @@ void tersoff2_energy()
 
                 do {
 
-                    /* fprintf(stderr, "cell %d neigh %d a_i %d a_j %d\n", */
-                    /* cell.scal, neigh_cell.scal, atom_i, atom_j); */
-
                     /* Avoid double counting of pair (i, j) */
                     if (atom_cell < atom_neighcell) {
 
                         /* TODO implement PBC via shift vector. */
-                        int atom_i = atom_cell;
-                        int atom_j = atom_neighcell;
+                        atom_t *ai = &atom[atom_cell];
+                        double rij, f_cutoff_val;
+
+                        /* 
+                         * Atomic positions in an outside cell must be treated
+                         * as they are and must not be pulled back into the
+                         * central simuation box.
+                         */
+                        atom_t aj = atom[atom_neighcell];
+                        aj.x += atom_shift_x;
+                        aj.y += atom_shift_y;
+                        aj.z += atom_shift_z;
 
                         /* Compute energy */
-                        rij = t2_distance_noPBC(atom_i, atom_j);
-                        f_cutoff_val = t2_f_cutoff(atom_i, atom_j, rij);
+                        rij = t2_distance_noPBC(ai, &aj); 
+                        /* rij = t2_distance(ai, &aj); */
+                        f_cutoff_val = t2_f_cutoff(ai, &aj, rij);
 
                         if (!iszero(f_cutoff_val)) {
                             /* Bond energy between atom i and atom j */
                             double Uij;           
+
+                            n_int++;
+                            /* printf("n_int = %d\n", n_int); */
+
                             /* If potential is enough large. */
                             Uij = f_cutoff_val * 
-                                  (t2_f_repulsive(atom_i, atom_j, rij) + 
-                                   t2_b(atom_i, atom_j) * 
-                                   t2_f_attractive(atom_i, atom_j, rij));
+                                  (t2_f_repulsive(ai, &aj, rij) + 
+                                   t2_b(ai, &aj) * t2_f_attractive(ai, &aj, rij));
 
                             /*
                             In Andersen fortran program:
@@ -104,6 +111,9 @@ void tersoff2_energy()
         }
     }
 
+    printf("Total energy U = %f\n", U);
+    printf("n_int = %d\n", n_int);
+
     exit(0);
 }
 
@@ -112,28 +122,28 @@ void tersoff2_energy()
  */
 
 /* t2_f_cutoff: Smooth cutoff function. */
-inline double t2_f_cutoff(int i, int j, double rij)
+inline double t2_f_cutoff(atom_t *ai, atom_t *aj, double rij)
 {
-    if (rij < Rij(i, j)) {
+    if (rij < Rij(ai, aj)) {
         return 1;
-    } else if ((rij > Rij(i, j)) && (rij < Sij(i, j))) {
-        return 1 / 2 + 1 / 2 * cos(M_PI * (rij - Rij(i, j)) / 
-                                   (Sij(i, j) - Rij(i, j)));
+    } else if ((rij > Rij(ai, aj)) && (rij < Sij(ai, aj))) {
+        return 1 / 2 + 1 / 2 * cos(M_PI * (rij - Rij(ai, aj)) / 
+                                   (Sij(ai, aj) - Rij(ai, aj)));
     } else { 
         return 0;
     }
 }
 
 /* t2_f_repulsive: Repulsive pair potential. */
-inline double t2_f_repulsive(int i, int j, double rij)
+inline double t2_f_repulsive(atom_t *ai, atom_t *aj, double rij)
 {
-    return Aij(i, j) * exp(-lambda_ij(i, j) * rij);
+    return Aij(ai, aj) * exp(-lambda_ij(ai, aj) * rij);
 }
 
 /* t2_f_attractive: Attractive pair potential. */
-inline double t2_f_attractive(int i, int j, double rij)
+inline double t2_f_attractive(atom_t *ai, atom_t *aj, double rij)
 {
-    return -Bij(i, j) * exp(-mu_ij(i, j) * rij);
+    return -Bij(ai, aj) * exp(-mu_ij(ai, aj) * rij);
 }
 
 /**
@@ -141,25 +151,27 @@ inline double t2_f_attractive(int i, int j, double rij)
  */
 
 /* t2_b: */
-inline double t2_b(int i, int j)
+inline double t2_b(atom_t *ai, atom_t *aj)
 {
-    return chi(i, j) * pow(1 + pow(beta(i), n(i)) * 
-                           pow(t2_zeta(i, j), n(i)), -1 / (2 * n(i)));
+    return chi(ai, aj) * pow(1 + pow(beta(ai), n(ai)) * 
+                           pow(t2_zeta(ai, aj), n(ai)), -1 / (2 * n(ai)));
 }
 
 /* t2_zeta: */
-inline double t2_zeta(int i, int j)
+inline double t2_zeta(atom_t *ai, atom_t *aj)
 {
     double rik, f_cutoff_val, sum = 0;
     int k;
 
     for (k = 0; k < natoms; k++) {
-        if ((k != i) && (k != j)) {
-            rik = t2_distance(i, k);
-            f_cutoff_val = t2_f_cutoff(i, k, rik);
+        atom_t *ak = &atom[k];
+
+        if ((ak != ai) && (ak != aj)) {
+            rik = t2_distance(ai, ak);
+            f_cutoff_val = t2_f_cutoff(ai, ak, rik);
 
             if (!iszero(f_cutoff_val)) {
-                sum += f_cutoff_val * omega_ij(i, k) * t2_g(i, j, k);
+                sum += f_cutoff_val * omega_ij(ai, ak) * t2_g(ai, aj, ak);
             }
         }
     }
@@ -168,36 +180,37 @@ inline double t2_zeta(int i, int j)
 }
 
 /* t2_g: */
-inline double t2_g(int i, int j, int k)
+inline double t2_g(atom_t *ai, atom_t *aj, atom_t *ak)
 {
-    return 1 + pow(c(i), 2) / pow(d(i), 2) -
-           pow(c(i), 2) / (pow(d(i), 2) + pow((h(i) - t2_cos_theta(i,j,k)), 2));
+    return 1 + pow(c(ai), 2) / pow(d(ai), 2) -
+           pow(c(ai), 2) / (pow(d(ai), 2) + pow((h(ai) - 
+                            t2_cos_theta(ai, aj, ak)), 2));
 }
 
 /* t2_cos_theta: */
-inline double t2_cos_theta(int i, int j, int k)
+inline double t2_cos_theta(atom_t *ai, atom_t *aj, atom_t *ak)
 {
     return
-        ((atom[j].x - atom[i].x) * (atom[k].x - atom[i].x) + 
-         (atom[j].y - atom[i].y) * (atom[k].y - atom[i].y) +
-         (atom[j].z - atom[i].z) * (atom[k].z - atom[i].z)) / 
-        (sqrt(pow(atom[j].x - atom[i].x, 2) + 
-              pow(atom[j].y - atom[i].y, 2) + 
-              pow(atom[j].z - atom[i].z, 2)) *
-         sqrt(pow(atom[k].x - atom[i].x, 2) + 
-              pow(atom[k].y - atom[i].y, 2) + 
-              pow(atom[k].z - atom[i].z, 2)));
+        ((aj->x - ai->x) * (ak->x - ai->x) + 
+         (aj->y - ai->y) * (ak->y - ai->y) +
+         (aj->z - ai->z) * (ak->z - ai->z)) / 
+        (sqrt(pow(aj->x - ai->x, 2) + 
+              pow(aj->y - ai->y, 2) + 
+              pow(aj->z - ai->z, 2)) *
+         sqrt(pow(ak->x - ai->x, 2) + 
+              pow(ak->y - ai->y, 2) + 
+              pow(ak->z - ai->z, 2)));
 }
 
 /* 
  * t2_distance: Compute distance between atom i and atom j. 
  *              Implements periodic boundary conditions.
  */
-inline double t2_distance(int i, int j)
+inline double t2_distance(atom_t *ai, atom_t *aj)
 {
-    double dx = atom[j].x - atom[i].x;
-    double dy = atom[j].y - atom[i].y;
-    double dz = atom[j].z - atom[i].z;
+    double dx = aj->x - ai->x;
+    double dy = aj->y - ai->y;
+    double dz = aj->z - ai->z;
 
     if (dx > Lx / 2) {
         dx = dx - Lx;
@@ -224,11 +237,11 @@ inline double t2_distance(int i, int j)
  * t2_distance_noPBC: Compute distance between atom i and atom j. 
  *                    NOT implements periodic boundary conditions.
  */
-inline double t2_distance_noPBC(int atom_i, int atom_j)
+inline double t2_distance_noPBC(atom_t *ai, atom_t *aj)
 {
-    return sqrt(pow(atom[atom_j].x - atom[atom_i].x, 2) + 
-                pow(atom[atom_j].y - atom[atom_i].y, 2) + 
-                pow(atom[atom_j].z - atom[atom_i].z, 2));
+    return sqrt(pow(aj->x - ai->x, 2) + 
+                pow(aj->y - ai->y, 2) + 
+                pow(aj->z - ai->z, 2));
 }
 
 /* iszero: Test floating point x is not a zero. */
@@ -236,4 +249,3 @@ inline int iszero(double x)
 {
     return (x < DOUBLE_CMP_EPS) && (-x > -DOUBLE_CMP_EPS);
 }
-

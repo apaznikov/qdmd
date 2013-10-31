@@ -258,9 +258,10 @@ static void free_pair_precomp()
  */
 
 /* lambda_ij: */
-inline double lambda_ij(int i, int j)
+inline double lambda_ij(atom_t *ai, atom_t *aj)
 {
-    return param_pair_precomp[atomspecies[i]][atomspecies[j]].lambda;
+    return param_pair_precomp[atomspecies[ai->index]]
+                             [atomspecies[aj->index]].lambda;
 }
 
 /* lambda_ij_precomp: */
@@ -276,9 +277,10 @@ static double lambda_precomp(int spec_i)
 }
 
 /* mu_ij: */
-inline double mu_ij(int i, int j)
+inline double mu_ij(atom_t *ai, atom_t *aj)
 {
-    return param_pair_precomp[atomspecies[i]][atomspecies[j]].mu;
+    return param_pair_precomp[atomspecies[ai->index]]
+                             [atomspecies[aj->index]].mu;
 }
 
 /* mu_ij_precomp */
@@ -294,9 +296,10 @@ static double mu_precomp(int spec_i)
 }
 
 /* Aij: */
-inline double Aij(int i, int j)
+inline double Aij(atom_t *ai, atom_t *aj)
 {
-    return param_pair_precomp[atomspecies[i]][atomspecies[j]].A;
+    return param_pair_precomp[atomspecies[ai->index]]
+                             [atomspecies[aj->index]].A;
 }
 
 /* Aij_precomp: */
@@ -312,9 +315,10 @@ static double A_precomp(int spec_i)
 }
 
 /* Bij: */
-inline double Bij(int i, int j)
+inline double Bij(atom_t *ai, atom_t *aj)
 {
-    return param_pair_precomp[atomspecies[i]][atomspecies[j]].B;
+    return param_pair_precomp[atomspecies[ai->index]]
+                             [atomspecies[aj->index]].B;
 }
 
 /* Bij_precomp: */
@@ -330,9 +334,9 @@ static double B_precomp(int spec_i)
 }
 
 /* Rij: */
-inline double Rij(int i, int j)
+inline double Rij(atom_t *ai, atom_t *aj)
 {
-    return param_pair_precomp[atomspecies[i]][atomspecies[j]].R;
+    return param_pair_precomp[atomspecies[ai->index]][atomspecies[aj->index]].R;
 }
 
 /* Rij_precomp: */
@@ -348,9 +352,10 @@ static double R_precomp(int spec_i)
 }
 
 /* Sij: */
-inline double Sij(int i, int j)
+inline double Sij(atom_t *ai, atom_t *aj)
 {
-    return param_pair_precomp[atomspecies[i]][atomspecies[j]].S;
+    return param_pair_precomp[atomspecies[ai->index]]
+                             [atomspecies[aj->index]].S;
 }
 
 /* Sij_precomp: */
@@ -366,12 +371,13 @@ static double S_precomp(int spec_i)
 }
 
 /* chi: */
-inline double chi(int i, int j)
+inline double chi(atom_t *ai, atom_t *aj)
 {
-    if (i == j) {
+    if (ai == aj) {
         return 1.0;
     } else {
-        return param_pair_precomp[atomspecies[i]][atomspecies[j]].chi;
+        return param_pair_precomp[atomspecies[ai->index]]
+                                 [atomspecies[aj->index]].chi;
     }
 }
 
@@ -400,44 +406,44 @@ static double chi_ij_precomp(int spec_i, int spec_j)
  */
 
 /* omega: Parameter omega is available in the future. Here it equals 1. */
-inline double omega_ij(int i, int j)
+inline double omega_ij(atom_t *ai, atom_t *aj)
 {
     return 1.0;
 }
 
 /* c: */
-inline double c(int i)
+inline double c(atom_t *ai)
 {
-    return param_all_3bound[atomspecies[i]].c;
+    return param_all_3bound[atomspecies[ai->index]].c;
 }
 
 /* d: */
-inline double d(int i)
+inline double d(atom_t *ai)
 {
-    return param_all_3bound[atomspecies[i]].d;
+    return param_all_3bound[atomspecies[ai->index]].d;
 }
 
 /* h: */
-inline double h(int i)
+inline double h(atom_t *ai)
 {
-    return param_all_single[atomspecies[i]].h;
+    return param_all_single[atomspecies[ai->index]].h;
 }
 
 /* n: */
-inline double n(int i)
+inline double n(atom_t *ai)
 {
-    return param_all_single[atomspecies[i]].n;
+    return param_all_single[atomspecies[ai->index]].n;
 }
 
 /* beta: */
-inline double beta(int i)
+inline double beta(atom_t *ai)
 {
-    return param_all_single[atomspecies[i]].beta;
+    return param_all_single[atomspecies[ai->index]].beta;
 }
 
 /* mass: */
-inline double mass(int i)
+inline double mass(atom_t *ai)
 {
-    return param_all_single[atomspecies[i]].mass;
+    return param_all_single[atomspecies[ai->index]].mass;
 }
 

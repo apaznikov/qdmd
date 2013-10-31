@@ -111,7 +111,14 @@ void md_finalize()
 /* allocate_memory: Allocates memory for global arrays. */
 static void allocate_memory()
 {
+    int i;
+
     atom = xmalloc(sizeof(atom_t) * natoms);
+
+    for (i = 0; i < natoms; i++) {
+        atom[i].index = i;
+    }
+
     atomspecies = xmalloc(sizeof(*atomspecies) * natoms);
 }
 
@@ -282,52 +289,52 @@ static void integrate()
  */
 static void compute_pos()
 {
-    int ai;
+    int i;
 
-    for (ai = 0; ai < natoms; ai++) {
+    for (i = 0; i < natoms; i++) {
         /* Compute position. */
-        atom[ai].x = atom[ai].x + atom[ai].vx * timestep_dt + 
-                     0.5 * atom[ai].ax * timestep_dt * timestep_dt; 
-        atom[ai].y = atom[ai].y + atom[ai].vy * timestep_dt + 
-                     0.5 * atom[ai].ay * timestep_dt * timestep_dt; 
-        atom[ai].z = atom[ai].z + atom[ai].vz * timestep_dt + 
-                     0.5 * atom[ai].az * timestep_dt * timestep_dt; 
+        atom[i].x = atom[i].x + atom[i].vx * timestep_dt + 
+                     0.5 * atom[i].ax * timestep_dt * timestep_dt; 
+        atom[i].y = atom[i].y + atom[i].vy * timestep_dt + 
+                     0.5 * atom[i].ay * timestep_dt * timestep_dt; 
+        atom[i].z = atom[i].z + atom[i].vz * timestep_dt + 
+                     0.5 * atom[i].az * timestep_dt * timestep_dt; 
 
         /* Periodic boundary conditions. */
         /* TODO: make function for PBC */
-        if (atom[ai].x >= Lx / 2) {
-            atom[ai].x = atom[ai].x - Lx;
-        } else if (atom[ai].x < -Lx / 2) {
-            atom[ai].x = atom[ai].x + Lx;
+        if (atom[i].x >= Lx / 2) {
+            atom[i].x = atom[i].x - Lx;
+        } else if (atom[i].x < -Lx / 2) {
+            atom[i].x = atom[i].x + Lx;
         }
 
-        if (atom[ai].y >= Ly / 2) {
-            atom[ai].y = atom[ai].y - Ly;
-        } else if (atom[ai].y < -Ly / 2) {
-            atom[ai].y = atom[ai].y + Ly;
+        if (atom[i].y >= Ly / 2) {
+            atom[i].y = atom[i].y - Ly;
+        } else if (atom[i].y < -Ly / 2) {
+            atom[i].y = atom[i].y + Ly;
         }
 
-        if (atom[ai].z >= Lz / 2) {
-            atom[ai].z = atom[ai].z - Lz;
-        } else if (atom[ai].z < -Lz / 2) {
-            atom[ai].z = atom[ai].z + Lz;
+        if (atom[i].z >= Lz / 2) {
+            atom[i].z = atom[i].z - Lz;
+        } else if (atom[i].z < -Lz / 2) {
+            atom[i].z = atom[i].z + Lz;
         }
 
         /* Update velocities based on a(t - dt) */
-        atom[ai].vx = atom[ai].vx + 0.5 * atom[ai].ax * timestep_dt;
-        atom[ai].vy = atom[ai].vy + 0.5 * atom[ai].ay * timestep_dt;
-        atom[ai].vz = atom[ai].vz + 0.5 * atom[ai].az * timestep_dt;
+        atom[i].vx = atom[i].vx + 0.5 * atom[i].ax * timestep_dt;
+        atom[i].vy = atom[i].vy + 0.5 * atom[i].ay * timestep_dt;
+        atom[i].vz = atom[i].vz + 0.5 * atom[i].az * timestep_dt;
     }
 }
 
 /* compute_velocities: Compute velocities v(t) based on a(t) */
 static void compute_velocities()
 {
-    int ai;
+    int i;
 
-    for (ai = 0; ai < natoms; ai++) {
-        atom[ai].vx = atom[ai].vx + 0.5 * atom[ai].ax * timestep_dt;
-        atom[ai].vy = atom[ai].vy + 0.5 * atom[ai].ay * timestep_dt;
-        atom[ai].vz = atom[ai].vz + 0.5 * atom[ai].az * timestep_dt;
+    for (i = 0; i < natoms; i++) {
+        atom[i].vx = atom[i].vx + 0.5 * atom[i].ax * timestep_dt;
+        atom[i].vy = atom[i].vy + 0.5 * atom[i].ay * timestep_dt;
+        atom[i].vz = atom[i].vz + 0.5 * atom[i].az * timestep_dt;
     }
 }

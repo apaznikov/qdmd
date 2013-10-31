@@ -9,17 +9,17 @@
 
 void tersoff2_energy();
 
-inline double t2_f_cutoff(int i, int j, double rij);
-inline double t2_f_repulsive(int i, int j, double rij);
-inline double t2_f_attractive(int i, int j, double rij);
+inline double t2_f_cutoff(atom_t *ai, atom_t *aj, double rij);
+inline double t2_f_repulsive(atom_t *ai, atom_t *aj, double rij);
+inline double t2_f_attractive(atom_t *ai, atom_t *aj, double rij);
 
-inline double t2_b(int i, int j);
-inline double t2_zeta(int i, int j);
-inline double t2_g(int i, int j, int k);
-inline double t2_cos_theta(int i, int j, int k);
+inline double t2_b(atom_t *ai, atom_t *aj);
+inline double t2_zeta(atom_t *ai, atom_t *aj);
+inline double t2_g(atom_t *ai, atom_t *aj, atom_t *ak);
+inline double t2_cos_theta(atom_t *ai, atom_t *aj, atom_t *ak);
 
-inline double t2_distance(int atom_i, int atom_j);
-inline double t2_distance_noPBC(int atom_i, int atom_j);
+inline double t2_distance(atom_t *ai, atom_t *aj);
+inline double t2_distance_noPBC(atom_t *ai, atom_t *aj);
 inline int    iszero(double x);
 
 #endif /* TERSOFF2_H */

@@ -10,19 +10,19 @@
 void tersoff2_param_init();
 void tersoff2_param_finalize();
 
-inline double lambda_ij(int i, int j);
-inline double mu_ij(int i, int j);
-inline double Aij(int i, int j);
-inline double Bij(int i, int j);
-inline double Rij(int i, int j);
-inline double Sij(int i, int j);
-inline double omega_ij(int i, int j);
-inline double c(int i);
-inline double d(int i);
-inline double h(int i);
-inline double n(int i);
-inline double chi(int i, int j);
-inline double beta(int i);
-inline double mass(int i);
+inline double lambda_ij(atom_t *ai, atom_t *aj);
+inline double mu_ij(atom_t *ai, atom_t *aj);
+inline double Aij(atom_t *ai, atom_t *aj);
+inline double Bij(atom_t *ai, atom_t *aj);
+inline double Rij(atom_t *ai, atom_t *aj);
+inline double Sij(atom_t *ai, atom_t *aj);
+inline double omega_ij(atom_t *ai, atom_t *aj);
+inline double c(atom_t *ai);
+inline double d(atom_t *ai);
+inline double h(atom_t *ai);
+inline double n(atom_t *ai);
+inline double chi(atom_t *ai, atom_t *aj);
+inline double beta(atom_t *ai);
+inline double mass(atom_t *ai);
 
 #endif /* POTENTIAL_TERSOFF2_H */

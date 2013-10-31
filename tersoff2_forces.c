@@ -27,27 +27,38 @@ typedef enum {
  * coord - x, y or z - coordinates
  */
 
-static double Uij_diff         (int z, int i, int j, coord_t coord);
-static double f_cutoff_diff    (int z, int i, int j, double rij, coord_t coord);
-static double rij_diff         (int z, int i, int j, double rij, coord_t coord);
-static double f_attractive_diff(int z, int i, int j, double rij, coord_t coord);
-static double f_repulsive_diff (int z, int i, int j, double rij, coord_t coord);
-static double bij_diff         (int z, int i, int j, double rij, coord_t coord);
-static double zeta_diff        (int z, int i, int j, double rij, coord_t coord);
-static double g_diff           (int z, int i, int j, int k, 
+static double Uij_diff         (atom_t *az, atom_t *ai, atom_t *aj, 
+                                coord_t coord);
+static double f_cutoff_diff    (atom_t *az, atom_t *ai, atom_t *aj, double rij, 
+                                coord_t coord); 
+static double rij_diff         (atom_t *az, atom_t *ai, atom_t *aj, double rij, 
+                                coord_t coord);
+static double f_attractive_diff(atom_t *az, atom_t *ai, atom_t *aj, double rij, 
+                                coord_t coord);
+static double f_repulsive_diff (atom_t *az, atom_t *ai, atom_t *aj, double rij, 
+                                coord_t coord);
+static double bij_diff         (atom_t *az, atom_t *ai, atom_t *aj, double rij, 
+                                coord_t coord);
+static double zeta_diff        (atom_t *az, atom_t *ai, atom_t *aj, double rij, 
+                                coord_t coord);
+static double g_diff           (atom_t *az, atom_t *ai, atom_t *aj, atom_t *ak, 
                                 double rij, double rik, coord_t coord);
-static double cos_theta_diff   (int z, int i, int j, int k, 
+static double cos_theta_diff   (atom_t *az, atom_t *ai, atom_t *aj, atom_t *ak, 
                                 double rij, double rik, coord_t coord);
-static int kronecker_delta(int i, int j);
-static double getcoord(int i, coord_t coord);
+static int kronecker_delta(atom_t *ai, atom_t *aj);
+static double getcoord(atom_t *ai, coord_t coord);
 
 /* tersoff2_forces: Computes forces. */
 void tersoff2_forces()
 {
     int z, i, j;
-    double Fx = 0, Fy = 0, Fz = 0;  /* Forces */
 
     for (z = 0; z < natoms; z++) {
+        double Fx = 0, Fy = 0, Fz = 0;  /* Forces */
+        atom_t *az = &atom[z];
+        atom_t *ai = &atom[z];
+        atom_t *aj = &atom[z];
+
         printf("z = %d\n", z);
         Fx = Fy = Fz = 0;
 
@@ -57,9 +68,9 @@ void tersoff2_forces()
 
             for (j = 0; j < natoms; j++) {
                 if (i != j) { 
-                    Fx += Uij_diff(z, i, j, COORD_X);
-                    Fy += Uij_diff(z, i, j, COORD_Y);
-                    Fz += Uij_diff(z, i, j, COORD_Z);
+                    Fx += Uij_diff(az, ai, aj, COORD_X);
+                    Fy += Uij_diff(az, ai, aj, COORD_Y);
+                    Fz += Uij_diff(az, ai, aj, COORD_Z);
                 }
             }
 
@@ -74,38 +85,38 @@ void tersoff2_forces()
         Fy *= -0.5;
         Fz *= -0.5;
 
-        atom[z].ax = Fx / mass(z);
-        atom[z].ay = Fy / mass(z);
-        atom[z].az = Fz / mass(z);
+        atom[z].ax = Fx / mass(az);
+        atom[z].ay = Fy / mass(az);
+        atom[z].az = Fz / mass(az);
     }
 }
 
 /* Uij_diff: */
-static double Uij_diff(int z, int i, int j, coord_t coord)
+static double Uij_diff(atom_t *az, atom_t *ai, atom_t *aj, coord_t coord)
 {
     double rij, f_cutoff_val, f_cutoff_diff_val, Uij_diff_val = 0; 
 
-    rij = t2_distance(i, j);
+    rij = t2_distance(ai, aj);
 
     /* If f_cutoff = 0 then f_cutoff_diff = 0 */
 
-    f_cutoff_val = t2_f_cutoff(i, j, rij);
+    f_cutoff_val = t2_f_cutoff(ai, aj, rij);
 
     if (!iszero(f_cutoff_val)) {
 
         Uij_diff_val = f_cutoff_val * 
-                       (f_repulsive_diff(z, i, j, rij, coord) + 
-                        bij_diff(z, i, j, rij, coord) * 
-                        t2_f_attractive(i, j, rij) +
-                        t2_b(i, j) * 
-                        f_attractive_diff(z, i, j, rij, coord));
+                       (f_repulsive_diff(az, ai, aj, rij, coord) + 
+                        bij_diff(az, ai, aj, rij, coord) * 
+                        t2_f_attractive(ai, aj, rij) +
+                        t2_b(ai, aj) * 
+                        f_attractive_diff(az, ai, aj, rij, coord));
 
-        f_cutoff_diff_val = f_cutoff_diff(z, i, j, rij, coord);
+        f_cutoff_diff_val = f_cutoff_diff(az, ai, aj, rij, coord);
 
         if (!iszero(f_cutoff_diff_val)) {
             Uij_diff_val += f_cutoff_diff_val * 
-                            (t2_f_repulsive(i, j, rij) + 
-                             t2_b(i, j) * t2_f_attractive(i, j, rij));
+                            (t2_f_repulsive(ai, aj, rij) + 
+                             t2_b(ai, aj) * t2_f_attractive(ai, aj, rij));
         }
 
     }
@@ -114,47 +125,52 @@ static double Uij_diff(int z, int i, int j, coord_t coord)
 }
 
 /* f_cutoff_diff: */
-static double f_cutoff_diff(int z, int i, int j, double rij, coord_t coord)
+static double f_cutoff_diff(atom_t *az, atom_t *ai, atom_t *aj, double rij, 
+                            coord_t coord)
 {
-    if (rij < Rij(i, j)) {
+    if (rij < Rij(ai, aj)) {
         return 0;
-    } else if ((rij > Rij(i, j)) && (rij < Sij(i, j))) {
-        return - M_PI / (2 * (Sij(i, j), Rij(i, j))) *
-                 cos(M_PI * (rij - Rij(i, j)) / (Sij(i, j) - Rij(i, j))) *
-                 rij_diff(z, i, j, rij, coord);
+    } else if ((rij > Rij(ai, aj)) && (rij < Sij(ai, aj))) {
+        return - M_PI / (2 * (Sij(ai, aj), Rij(ai, aj))) *
+                 cos(M_PI * (rij - Rij(ai, aj)) / (Sij(ai, aj) - Rij(ai, aj))) *
+                 rij_diff(az, ai, aj, rij, coord);
     } else /* if (rij > Sij(i, j)) */ {
         return 0;
     }
 }
 
 /* rij_diff: */
-static double rij_diff(int z, int i, int j, double rij, coord_t coord)
+static double rij_diff(atom_t *az, atom_t *ai, atom_t *aj, double rij, 
+                       coord_t coord)
 {
-    if (z == i) {
-        return (getcoord(i, coord) - getcoord(j, coord)) / rij;
-    } else if (z == j) {
-        return (getcoord(j, coord) - getcoord(i, coord)) / rij;
+    if (az == ai) {
+        return (getcoord(ai, coord) - getcoord(aj, coord)) / rij;
+    } else if (az == aj) {
+        return (getcoord(aj, coord) - getcoord(ai, coord)) / rij;
     } else {
         return 0;
     }
 }
 
 /* f_attractive_diff: */
-static double f_attractive_diff(int z, int i, int j, double rij, coord_t coord)
+static double f_attractive_diff(atom_t *az, atom_t *ai, atom_t *aj, double rij, 
+                                coord_t coord)
 {
-    return -lambda_ij(i, j) * Aij(i, j) * exp(-lambda_ij(i, j) * rij) *
-            rij_diff(z, i, j, rij, coord);
+    return -lambda_ij(ai, aj) * Aij(ai, aj) * exp(-lambda_ij(ai, aj) * rij) *
+            rij_diff(az, ai, aj, rij, coord);
 }
 
 /* f_repulsive_diff: */
-static double f_repulsive_diff(int z, int i, int j, double rij, coord_t coord)
+static double f_repulsive_diff(atom_t *az, atom_t *ai, atom_t *aj, double rij, 
+                               coord_t coord)
 {
-    return -lambda_ij(i, j) * -Bij(i, j) * exp(-lambda_ij(i, j) * rij) *
-            rij_diff(z, i, j, rij, coord);
+    return -lambda_ij(ai, aj) * -Bij(ai, aj) * exp(-lambda_ij(ai, aj) * rij) *
+            rij_diff(az, ai, aj, rij, coord);
 }
 
 /* bij_diff: */
-static double bij_diff(int z, int i, int j, double rij, coord_t coord)
+static double bij_diff(atom_t *az, atom_t *ai, atom_t *aj, double rij, 
+                       coord_t coord)
 {
     double bij_denom_tmp, t2_zeta_val;
 
@@ -163,47 +179,51 @@ static double bij_diff(int z, int i, int j, double rij, coord_t coord)
      * force_tersoff.f90:193-200
      */
 
-    bij_denom_tmp = 1 + pow(beta(i), n(i)) * pow(t2_zeta(i, j), n(i));
+    bij_denom_tmp = 1 + pow(beta(ai), n(ai)) * pow(t2_zeta(ai, aj), n(ai));
 
     if (iszero(bij_denom_tmp)) {
         return 0.0;
     } else {
-        t2_zeta_val = t2_zeta(i, j);
+        t2_zeta_val = t2_zeta(ai, aj);
 
         if (iszero(t2_zeta_val)) {
             return 0.0;
         } else {
-            return chi(i, j) * (-pow(beta(i), n(i)) * 
-                                 pow(t2_zeta_val, n(i) - 1)) / 
-                   (2 * pow(bij_denom_tmp, 1 / (2 * n(i)) + 1)) * 
-                   zeta_diff(z, i, j, rij, coord);
+            return chi(ai, aj) * (-pow(beta(ai), n(ai)) * 
+                                 pow(t2_zeta_val, n(ai) - 1)) / 
+                   (2 * pow(bij_denom_tmp, 1 / (2 * n(ai)) + 1)) * 
+                   zeta_diff(az, ai, aj, rij, coord);
         }
     }
 }
 
 /* zeta_diff: */
-static double zeta_diff(int z, int i, int j, double rij, coord_t coord)
+static double zeta_diff(atom_t *az, atom_t *ai, atom_t *aj, double rij, 
+                        coord_t coord)
 {
     double rik, f_cutoff_val, f_cutoff_diff_val, sum = 0;
     int k;
 
     for (k = 0; k < natoms; k++) {
-        if ((k != i) && (k != j)) {
-            rik = t2_distance(i, k);
+        atom_t *ak = &atom[k];
+
+        if ((ak != ai) && (ak != aj)) {
+            rik = t2_distance(ai, ak);
 
             /* If f_cutoff = 0 then f_cutoff_diff = 0 */
 
-            f_cutoff_val = t2_f_cutoff(i, k, rik);
+            f_cutoff_val = t2_f_cutoff(ai, ak, rik);
 
             if (!iszero(f_cutoff_val)) {
 
-                sum = f_cutoff_val * omega_ij(i, k) * 
-                      g_diff(z, i, j, k, rij, rik, coord);
+                sum = f_cutoff_val * omega_ij(ai, ak) * 
+                      g_diff(az, ai, aj, ak, rij, rik, coord);
 
-                f_cutoff_diff_val = f_cutoff_diff(z, i, k, rik, coord);
+                f_cutoff_diff_val = f_cutoff_diff(az, ai, ak, rik, coord);
 
                 if (!iszero(f_cutoff_diff_val)) {
-                    sum += f_cutoff_diff_val * omega_ij(i, k) * t2_g(i, j, k);
+                    sum += f_cutoff_diff_val * omega_ij(ai, ak) * 
+                           t2_g(ai, aj, ak);
                 }
             }
         }
@@ -213,58 +233,58 @@ static double zeta_diff(int z, int i, int j, double rij, coord_t coord)
 }
 
 /* g_diff: */
-static double g_diff(int z, int i, int j, int k, 
+static double g_diff(atom_t *az, atom_t *ai, atom_t *aj, atom_t *ak, 
                      double rij, double rik, coord_t coord)
 {
-    return -(2 * pow(c(i), 2) * (h(i) - t2_cos_theta(i, j, k))) / 
-            pow(pow(d(i), 2) + 
-                pow(h(i) - t2_cos_theta(i, j, k), 2), 2) * 
-            cos_theta_diff(z, i, j, k, rij, rik, coord);
+    return -(2 * pow(c(ai), 2) * (h(ai) - t2_cos_theta(ai, aj, ak))) / 
+            pow(pow(d(ai), 2) + 
+                pow(h(ai) - t2_cos_theta(ai, aj, ak), 2), 2) * 
+            cos_theta_diff(az, ai, aj, ak, rij, rik, coord);
 }
 
 /* cos_theta_diff: */
-static double cos_theta_diff(int z, int i, int j, int k, 
+static double cos_theta_diff(atom_t *az, atom_t *ai, atom_t *aj, atom_t *ak, 
                              double rij, double rik, coord_t coord)
 {
-    double i_coord = getcoord(i, coord);
-    double j_coord = getcoord(j, coord);
-    double k_coord = getcoord(k, coord);
+    double i_coord = getcoord(ai, coord);
+    double j_coord = getcoord(aj, coord);
+    double k_coord = getcoord(ak, coord);
 
     double rij_vec = j_coord - i_coord;
     double rik_vec = k_coord - i_coord;
 
-    int delta_zk = kronecker_delta(z, k);
-    int delta_zi = kronecker_delta(z, i);
-    int delta_zj = kronecker_delta(z, j);
+    int delta_zk = kronecker_delta(az, ak);
+    int delta_zi = kronecker_delta(az, ai);
+    int delta_zj = kronecker_delta(az, aj);
 
     return (rij_vec * (delta_zk - delta_zi) + 
             rik_vec * (delta_zj - delta_zi)) / (rij * rik) - 
-           t2_cos_theta(i, j, k) * 
+           t2_cos_theta(ai, aj, ak) * 
            ((rij_vec / pow(rij, 2)) * (delta_zj - delta_zi) +
             (rik_vec / pow(rik, 2)) * (delta_zk - delta_zi));
 }
 
 /* kronecker_delta: */ 
-static int kronecker_delta(int i, int j)
+static int kronecker_delta(atom_t *ai, atom_t *aj)
 {
-    return i == j ? 1 : 0;
+    return ai == aj ? 1 : 0;
 }
 
 /* 
  * getcoord: Return coordinate x, y or z of atom i 
  *            according to the coord variable.
  */
-static double getcoord(int i, coord_t coord)
+static double getcoord(atom_t *ai, coord_t coord)
 {
     switch(coord) {
         case COORD_X:
-            return atom[i].x;
+            return ai->x;
             break;
         case COORD_Y:
-            return atom[i].y;
+            return ai->y;
             break;
         case COORD_Z:
-            return atom[i].z;
+            return ai->z;
             break;
     }
     return 0;
