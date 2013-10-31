@@ -43,6 +43,106 @@ static double cell_rz;
 /* Linked list: head and list as such. */
 static int *list, *head;
 
+static void init_cell(cell_t *cell);
+static bool scan_cells(cell_t *cell);
+static void init_neigh_cell(cell_t cell,  cell_t *neigh_cell);
+static bool scan_neigh_cells(cell_t cell, cell_t *neigh_cell);
+
+static bool init_atom_in_cell(cell_t cell, int *atom_i);
+static bool scan_atom_in_cell(cell_t cell, int *atom_i);
+
+static void cell_vec_to_scal(cell_t *cell);
+static void cell_periodic_bound_cond(cell_t cell_orig, cell_t *cell_new,
+                              double *atom_shift_x, double *atom_shift_y, 
+                              double *atom_shift_z);
+
+/* 
+ * celllist_scan_atoms: Scan over all atom pairs. 
+ *                      f - function (forces or energy) to do with pair of atoms
+ */
+void celllist_scan_atoms(void (*func) (int atom_i, int atom_j))
+{
+    cell_t cell;
+    cell_t neigh_cell_raw;  /* Cell for scan all neighbour cells without PBC. */
+    cell_t neigh_cell;      /* Working neighbour cell. */
+
+    init_cell(&cell);
+
+    while (scan_cells(&cell)) {
+
+        cell_vec_to_scal(&cell);
+        if (cell.scal % 1000 == 0) {
+            printf("cell = %d\n", cell.scal);
+        }
+
+        init_neigh_cell(cell, &neigh_cell_raw);
+
+        while (scan_neigh_cells(cell, &neigh_cell_raw)) {
+
+            int atom_cell, atom_neighcell;
+            double atom_shift_x, atom_shift_y, atom_shift_z;
+
+            cell_periodic_bound_cond(neigh_cell_raw, &neigh_cell,
+                                   &atom_shift_x, &atom_shift_y, &atom_shift_z);
+            cell_vec_to_scal(&neigh_cell);
+
+            if (cell.scal >= neigh_cell.scal) {
+                continue;   /* avoid double counting of cell pairs */
+            }
+
+            /* Now scan over the atoms in cell and atoms in neighbour cell. */
+
+            if (!init_atom_in_cell(cell, &atom_cell)) {
+                continue;   /* if no atoms in the cell */
+            }
+
+            do {
+                if (!init_atom_in_cell(neigh_cell, &atom_neighcell)) {
+                    continue;   /* if no atoms in the cell */
+                }
+
+                do {
+                    /* fprintf(stderr, "cell %d neigh %d a_i %d a_j %d\n", */
+                    /* cell.scal, neigh_cell.scal, atom_i, atom_j); */
+
+                    int atom_i = atom_cell;
+                    int atom_j = atom_neighcell;
+
+                    /* Avoid double counting of pair (i, j) */
+                    if (atom_i >= atom_j) {
+                        continue;
+                    }
+
+                    /* 
+                     * TODO 
+                     * implement PBC via shift vector. 
+                     */
+
+                    /* 
+                     * TODO
+                     * Atomic positions in an outside cell must be treated
+                     * as they are and must not be pulled back into the 
+                     * central simuation box.
+                     */
+                    /*
+                    atom_t aj = atom[atom_neighcell];
+                    aj.x += atom_shift_x;
+                    aj.y += atom_shift_y;
+                    aj.z += atom_shift_z;
+                    */
+                    
+                    /* 
+                     * Call function to compute energy (force, etc) 
+                     * for atom pair.
+                     */
+                    func(atom_i, atom_j);
+
+                } while (scan_atom_in_cell(neigh_cell, &atom_neighcell));
+            } while (scan_atom_in_cell(cell, &atom_cell));
+        }
+    }
+}
+
 /* linked_cell_init: Init head and all constants. */
 void linked_cell_init()
 {
@@ -81,29 +181,29 @@ void linked_cell_init()
 /* linked_cell_update: Build list of atoms belongs to each cell. */
 void linked_cell_update()
 {
-    int ai;
+    int atom;
     cell_t cell;
 
     /* Construct head and list */
-    for (ai = 0; ai < natoms; ai++) {
+    for (atom = 0; atom < natoms; atom++) {
 
         /* Cell index (vector) to which this atom belongs */
-        cell.x = atom[ai].x / cell_rx;
-        cell.y = atom[ai].y / cell_ry;
-        cell.z = atom[ai].z / cell_rz;
+        cell.x = x[atom] / cell_rx;
+        cell.y = y[atom] / cell_ry;
+        cell.z = z[atom] / cell_rz;
 
         cell_vec_to_scal(&cell);
 
         /* Link to the previous occupant */
-        list[ai] = head[cell.scal];
+        list[atom] = head[cell.scal];
 
         /* The last one goes to the header */
-        head[cell.scal] = ai;
+        head[cell.scal] = atom;
     }
 }
 
 /* cell_vec_to_scal: Convert coordinates of cell from vector to scalar. */
-void cell_vec_to_scal(cell_t *cell)
+static void cell_vec_to_scal(cell_t *cell)
 {
     cell->scal = cell->x * cell_LyLz + cell->y * cell_Lz + cell->z;
 }
@@ -121,23 +221,23 @@ void linked_cell_finalize()
  */
 bool cell_update_test()
 {
-    int ai;
-    double max_v = atom[0].vx;
+    int atom;
+    double max_v = vx[0];
     static double sum_max_v = 0;
 
     /* Find maximum of velocities. */
-    for (ai = 0; ai < natoms; ai++) {
+    for (atom = 0; atom < natoms; atom++) {
 
-        if (atom[ai].vx > max_v) {
-            max_v = atom[ai].vx;
+        if (vx[atom] > max_v) {
+            max_v = vx[atom];
         }
 
-        if (atom[ai].vy > max_v) {
-            max_v = atom[ai].vy;
+        if (vy[atom] > max_v) {
+            max_v = vy[atom];
         }
 
-        if (atom[ai].vz > max_v) {
-            max_v = atom[ai].vz;
+        if (vz[atom] > max_v) {
+            max_v = vz[atom];
         }
     }
 
@@ -156,7 +256,7 @@ bool cell_update_test()
 }
 
 /* init_cell: Before start scan, initialize cell. */
-void init_cell(cell_t *cell)
+static void init_cell(cell_t *cell)
 {
     cell->x = 0;
     cell->y = 0;
@@ -164,7 +264,7 @@ void init_cell(cell_t *cell)
 }
 
 /* scan_cells: Scan over cells. Goes to the next cell. */
-bool scan_cells(cell_t *cell)
+static bool scan_cells(cell_t *cell)
 {
     /* Increment the cell coordinates. Check bounds. */
     cell->z++;
@@ -187,7 +287,7 @@ bool scan_cells(cell_t *cell)
 }
 
 /* init_neigh_cell: Before start scan, initialize cell. */
-void init_neigh_cell(cell_t cell, cell_t *neigh_cell)
+static void init_neigh_cell(cell_t cell, cell_t *neigh_cell)
 {
     neigh_cell->x = cell.x - 1;
     neigh_cell->y = cell.y - 1;
@@ -195,7 +295,7 @@ void init_neigh_cell(cell_t cell, cell_t *neigh_cell)
 }
 
 /* scan_neigh_cells: */
-bool scan_neigh_cells(cell_t cell, cell_t *neigh_cell)
+static bool scan_neigh_cells(cell_t cell, cell_t *neigh_cell)
 {
     /* Increment cell coordinates. Check bounds. */
     neigh_cell->z++;
@@ -214,7 +314,6 @@ bool scan_neigh_cells(cell_t cell, cell_t *neigh_cell)
         }
     }
 
-
     return true;
 }
 
@@ -225,9 +324,10 @@ bool scan_neigh_cells(cell_t cell, cell_t *neigh_cell)
  *                           and must not be pulled back into the central
  *                           simation box.
  */
-void cell_periodic_bound_cond(cell_t cell_orig, cell_t *cell_new,
-                              double *atom_shift_x, double *atom_shift_y, 
-                              double *atom_shift_z)
+static void cell_periodic_bound_cond(cell_t cell_orig, cell_t *cell_new,
+                                     double *atom_shift_x, 
+                                     double *atom_shift_y, 
+                                     double *atom_shift_z)
 {
     /*
     cell_new->x = (cell_orig.x + cell_Lx) % cell_Lx;
@@ -271,7 +371,7 @@ void cell_periodic_bound_cond(cell_t cell_orig, cell_t *cell_new,
 }
 
 /* init_atom_in_cell: Init atom before scan in the cell. */
-bool init_atom_in_cell(cell_t cell, int *atom_i)
+static bool init_atom_in_cell(cell_t cell, int *atom_i)
 {
     if (head[cell.scal] != LIST_END) {
         *atom_i = head[cell.scal];
@@ -284,7 +384,7 @@ bool init_atom_in_cell(cell_t cell, int *atom_i)
 }
 
 /* scan_atom_in_cell: Scan in the cell: get list of atoms in the cell. */
-bool scan_atom_in_cell(cell_t cell, int *atom_i)
+static bool scan_atom_in_cell(cell_t cell, int *atom_i)
 {
     if (list[*atom_i] != LIST_END) {
         *atom_i = list[*atom_i];

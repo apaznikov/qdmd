@@ -14,23 +14,13 @@ typedef struct cell_s {
     int scal;
 } cell_t;
 
+void celllist_scan_atoms(void (*func) (int atom_i, int atom_j));
+
 void linked_cell_init();
 void linked_cell_finalize();
 
 void linked_cell_update();
 bool cell_update_test();
 
-void init_cell(cell_t *cell);
-bool scan_cells(cell_t *cell);
-void init_neigh_cell(cell_t cell,  cell_t *neigh_cell);
-bool scan_neigh_cells(cell_t cell, cell_t *neigh_cell);
-
-bool init_atom_in_cell(cell_t cell, int *atom_i);
-bool scan_atom_in_cell(cell_t cell, int *atom_i);
-
-void cell_vec_to_scal(cell_t *cell);
-void cell_periodic_bound_cond(cell_t cell_orig, cell_t *cell_new,
-                              double *atom_shift_x, double *atom_shift_y, 
-                              double *atom_shift_z);
 
 #endif /* end of include guard: CELLLIST_H */

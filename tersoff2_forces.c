@@ -13,6 +13,7 @@
 #include "tersoff2.h"
 #include "tersoff2_forces.h"
 #include "tersoff2_params.h"
+#include "celllist.h"
 
 typedef enum {
     COORD_X,
@@ -26,6 +27,12 @@ typedef enum {
  * rij   - distance between atoms i and j,
  * coord - x, y or z - coordinates
  */
+
+/* This variables are global to pass into celllist_scan_atoms. */
+double Fx = 0, Fy = 0, Fz = 0;  /* Forces */
+int atom_z = 0;                 /* Current atom */
+
+static void tersoff2_forces_ij(int atom_i, int atom_j);
 
 static double Uij_diff         (int z, int i, int j, coord_t coord);
 static double f_cutoff_diff    (int z, int i, int j, double rij, coord_t coord);
@@ -44,39 +51,36 @@ static double getcoord(int i, coord_t coord);
 /* tersoff2_forces: Computes forces. */
 void tersoff2_forces()
 {
-    int z, i, j;
-    double Fx = 0, Fy = 0, Fz = 0;  /* Forces */
 
-    for (z = 0; z < natoms; z++) {
-        printf("z = %d\n", z);
+    /* Main loop by atoms: compute force for each atom. */
+    for (atom_z = 0; atom_z < natoms; atom_z++) {
+
+        printf("z = %d\n", atom_z);
         Fx = Fy = Fz = 0;
 
-        /* Compute sum of differential of U. */
-        for (i = 0; i < natoms; i++) {
-            printf("i = %d\n", i);
-
-            for (j = 0; j < natoms; j++) {
-                if (i != j) { 
-                    Fx += Uij_diff(z, i, j, COORD_X);
-                    Fy += Uij_diff(z, i, j, COORD_Y);
-                    Fz += Uij_diff(z, i, j, COORD_Z);
-                }
-            }
-
-            /*
-            printf("Fx = %f\n", Fx);
-            printf("Fy = %f\n", Fy);
-            printf("Fz = %f\n", Fz);
-            */
-        }
+        celllist_scan_atoms(tersoff2_forces_ij);
 
         Fx *= -0.5;
         Fy *= -0.5;
         Fz *= -0.5;
 
-        atom[z].ax = Fx / mass(z);
-        atom[z].ay = Fy / mass(z);
-        atom[z].az = Fz / mass(z);
+        ax[atom_z] = Fx / mass(atom_z);
+        ay[atom_z] = Fy / mass(atom_z);
+        az[atom_z] = Fz / mass(atom_z);
+    }
+}
+
+/* tersoff2_energy_ij: Compute energy for atom pair (atom_i, atom_j). */
+static void tersoff2_forces_ij(int atom_i, int atom_j)
+{
+    if (atom_i != atom_j) { 
+        Fx += Uij_diff(atom_z, atom_i, atom_j, COORD_X);
+        Fy += Uij_diff(atom_z, atom_i, atom_j, COORD_Y);
+        Fz += Uij_diff(atom_z, atom_i, atom_j, COORD_Z);
+
+        /*     printf("Fx = %f\n", Fx); */
+        /*     printf("Fy = %f\n", Fy); */
+        /*     printf("Fz = %f\n", Fz); */
     }
 }
 
@@ -258,13 +262,13 @@ static double getcoord(int i, coord_t coord)
 {
     switch(coord) {
         case COORD_X:
-            return atom[i].x;
+            return x[i];
             break;
         case COORD_Y:
-            return atom[i].y;
+            return y[i];
             break;
         case COORD_Z:
-            return atom[i].z;
+            return z[i];
             break;
     }
     return 0;
